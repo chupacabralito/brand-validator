@@ -141,7 +141,6 @@ export class DomainService {
           domain,
           availability: result.available,
           whoisData: result.whoisData,
-          dnsData: null,
           registrarPrices: result.pricing,
           alternates: result.alternatives,
           expiresAt,
