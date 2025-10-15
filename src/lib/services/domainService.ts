@@ -70,8 +70,8 @@ export class DomainService {
             status: cached.availability ? 'available' : 'registered',
             nameServers: (cached.whoisData as any)?.nameServers || [],
             whoisData: cached.whoisData,
-            alternatives: (cached.alternates as DomainAlternative[]) || [],
-            pricing: (cached.registrarPrices as DomainPricing) || this.getDomainPricing(cleanDomain),
+            alternatives: (cached.alternates as unknown as DomainAlternative[]) || [],
+            pricing: (cached.registrarPrices as unknown as DomainPricing) || this.getDomainPricing(cleanDomain),
             lastChecked: cached.updatedAt.toISOString(),
             cacheExpiry: cached.expiresAt.toISOString(),
             fromCache: true
