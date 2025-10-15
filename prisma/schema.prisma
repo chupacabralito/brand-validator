@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // User tracking
+  userAgent String?
+  ipAddress String?
+  referrer  String?
+  
+  // Session data
+  searchHistory Json? // Store search queries and results
+  preferences   Json? // User preferences
+  
+  // Relations
+  clicks     AffiliateClick[]
+  searches   SearchLog[]
+  experiments ExperimentLog[]
+  
+  @@map("sessions")
+}
+
+model AffiliateClick {
+  id        String   @id @default(cuid())
+  sessionId String
+  createdAt DateTime @default(now())
+  
+  // Click data
+  partner    String // "porkbun", "namecheap", "logoai", etc.
+  offer      String // "domain", "brandkit", "logo"
+  url        String // The affiliate URL
+  utmSource  String
+  utmMedium  String
+  utmCampaign String
+  utmContent String?
+  
+  // Tracking
+  converted Boolean @default(false)
+  conversionValue Float?
+  conversionDate DateTime?
+  
+  // Relations
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  @@map("affiliate_clicks")
+}
+
+model SearchLog {
+  id        String   @id @default(cuid())
+  sessionId String
+  createdAt DateTime @default(now())
+  
+  // Search data
+  query     String // The search query (domain or idea)
+  queryType String // "domain" or "idea"
+  
+  // Results
+  domainResult    Json? // DomainResult data
+  brandKitResult  Json? // BrandKit data
+  ipGuidanceResult Json? // IPGuidance data
+  socialResult    Json? // SocialCheckResult data
+  
+  // Performance
+  responseTime Int? // Response time in ms
+  success      Boolean @default(true)
+  errorMessage String?
+  
+  // Relations
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  @@map("search_logs")
+}
+
+model ExperimentLog {
+  id        String   @id @default(cuid())
+  sessionId String
+  createdAt DateTime @default(now())
+  
+  // Experiment data
+  experimentName String // "brand_kit_variants", "pricing_display", etc.
+  variant       String // "A", "B", "control", etc.
+  action        String // "view", "click", "convert", etc.
+  metadata      Json?  // Additional experiment data
+  
+  // Relations
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  
+  @@map("experiment_logs")
+}
+
+model DomainCache {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+  
+  // Cached data
+  whoisData    Json? // WHOIS lookup result
+  dnsData      Json? // DNS resolution result
+  availability Boolean
+  registrarPrices Json? // Pricing data
+  alternates   Json? // Alternative domains
+  
+  @@map("domain_cache")
+}
+
+model BrandKitCache {
+  id        String   @id @default(cuid())
+  query     String   // The idea/query that generated this brand kit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+  
+  // Cached data
+  brandKit Json // BrandKit data
+  
+  @@map("brand_kit_cache")
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  sessionId String?
+  createdAt DateTime @default(now())
+  
+  // Event data
+  eventType String // "page_view", "search", "click", "conversion", etc.
+  eventName String // Specific event name
+  properties Json? // Event properties
+  
+  // User context
+  userAgent String?
+  ipAddress String?
+  referrer  String?
+  page      String?
+  
+  @@map("analytics_events")
+}
+
+

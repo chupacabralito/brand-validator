@@ -1,103 +1,361 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import SearchBox from '@/app/components/SearchBox';
+import DomainRail from '@/app/components/DomainRail';
+import BrandKitRail from '@/app/components/BrandKitRail';
+import SocialHandlesRail from '@/app/components/SocialHandlesRail';
+import TrademarkSearchResults from '@/app/components/TrademarkSearchResults';
+import CompositeScoreBar from '@/app/components/CompositeScoreBar';
+import { DomainResult, BrandKit, SocialCheckResult } from '@/lib/models/DomainResult';
+import { TrademarkSearchResult } from '@/lib/services/trademarkSearch';
+import { CompositeScoreResult } from '@/lib/services/compositeScore';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [query, setQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [domainResult, setDomainResult] = useState<DomainResult | null>(null);
+  const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
+  const [socialResult, setSocialResult] = useState<SocialCheckResult | null>(null);
+  const [trademarkResult, setTrademarkResult] = useState<TrademarkSearchResult | null>(null);
+  const [compositeResult, setCompositeResult] = useState<CompositeScoreResult | null>(null);
+  const [selectedTrademarkCategory, setSelectedTrademarkCategory] = useState<string>('all');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Debug: Log when composite result changes
+  useEffect(() => {
+    console.log('Composite result state changed:', compositeResult);
+  }, [compositeResult]);
+
+  const handleDomainCheck = async (domain: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/domain-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain })
+      });
+      const data = await response.json();
+      setDomainResult(data);
+    } catch (error) {
+      console.error('Domain check failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateCompositeScore = useCallback(async () => {
+    console.log('=== COMPOSITE SCORE CALCULATION ===');
+    console.log('Domain Result:', domainResult);
+    console.log('Social Result:', socialResult);
+    console.log('Trademark Result:', trademarkResult);
+    console.log('Brand Kit:', brandKit);
+    
+    if (!domainResult && !socialResult && !trademarkResult && !brandKit) {
+      console.log('No results available for composite score');
+      setCompositeResult(null);
+      return;
+    }
+
+    try {
+      console.log('Sending request to composite score API...');
+      const response = await fetch('/api/composite-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domainResult,
+          socialResult,
+          trademarkResult,
+          brandKit,
+          selectedTrademarkCategory
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Composite score API response:', data);
+      setCompositeResult(data);
+      console.log('Composite result state updated');
+    } catch (error) {
+      console.error('Error calculating composite score:', error);
+    }
+  }, [domainResult, socialResult, trademarkResult, brandKit]);
+
+  // Calculate composite score when all individual results are available
+  useEffect(() => {
+    if (domainResult || socialResult || trademarkResult || brandKit) {
+      console.log('Individual results available, calculating composite score...');
+      console.log('Domain:', domainResult);
+      console.log('Social:', socialResult);
+      console.log('Trademark:', trademarkResult);
+      console.log('Brand:', brandKit);
+      
+      const timer = setTimeout(() => {
+        calculateCompositeScore();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [domainResult, socialResult, trademarkResult, brandKit, calculateCompositeScore]);
+
+  const handleAffiliateClick = async (partner: string, offer: string, url: string) => {
+    try {
+      const response = await fetch('/api/affiliate/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partner, offer, url })
+      });
+      
+      if (response.ok) {
+        // Get the redirect URL from the response
+        const redirectUrl = response.headers.get('location') || response.url;
+        window.open(redirectUrl, '_blank');
+      } else {
+        console.error('Affiliate click failed:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Affiliate click error:', error);
+    }
+  };
+
+  const handleTrademarkCategoryChange = (category: string) => {
+    setSelectedTrademarkCategory(category);
+    // Recalculate composite score when category changes
+    if (domainResult && socialResult && trademarkResult && brandKit) {
+      calculateCompositeScore();
+    }
+  };
+
+  const handleDomainRefresh = async () => {
+    if (!domainResult) return;
+
+    console.log('Refreshing domain data (bypassing cache)...');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/domain-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: domainResult.query,
+          refresh: true // Force cache bypass
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Refreshed domain data:', data);
+      setDomainResult(data);
+
+      // Recalculate composite score with fresh data
+      setTimeout(() => {
+        calculateCompositeScore();
+      }, 500);
+    } catch (error) {
+      console.error('Domain refresh failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+
+    console.log('Search initiated for:', searchQuery);
+    setIsLoading(true);
+    setQuery(searchQuery);
+
+    try {
+      // Check if it's a domain or idea
+      const isDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(searchQuery);
+      const isPotentialDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?$/.test(searchQuery) && !searchQuery.includes(' ');
+
+      if (isDomain || isPotentialDomain) {
+        console.log('Domain search detected for:', searchQuery);
+        // Domain search flow
+        const [domainResponse, brandResponse] = await Promise.all([
+          fetch('/api/domain-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain: searchQuery })
+          }),
+          fetch('/api/brand-kit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              idea: `Brand for ${searchQuery}`,
+              tone: 'modern',
+              audience: 'tech professionals',
+              domain: searchQuery
+            })
+          })
+        ]);
+
+        const domainData = await domainResponse.json();
+        const brandData = await brandResponse.json();
+
+        console.log('Domain API response:', domainData);
+        console.log('Brand API response:', brandData);
+
+        setDomainResult(domainData);
+        setBrandKit(brandData);
+
+        // Generate trademark search for the domain root
+        const domainRoot = searchQuery.split('.')[0];
+        const trademarkResponse = await fetch('/api/trademark-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brandName: domainRoot })
+        });
+        const trademarkData = await trademarkResponse.json();
+        setTrademarkResult(trademarkData);
+
+        // Check social handles
+        const socialResponse = await fetch('/api/social-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handleBase: domainRoot })
+        });
+        const socialData = await socialResponse.json();
+        setSocialResult(socialData);
+
+        // Composite score will be calculated automatically via useEffect
+
+      } else {
+        // Idea search flow
+        const brandResponse = await fetch('/api/brand-kit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idea: searchQuery,
+            tone: 'modern',
+            audience: 'general audience'
+          })
+        });
+
+        const brandData = await brandResponse.json();
+        setBrandKit(brandData);
+
+        // For idea searches, don't automatically check domain availability
+        // Let the user choose which generated name to check
+        setDomainResult(null);
+
+
+        // Check social handles
+        const socialResponse = await fetch('/api/social-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handleBase: searchQuery.toLowerCase().replace(/\s/g, '') })
+        });
+        const socialData = await socialResponse.json();
+        setSocialResult(socialData);
+
+        // Run trademark search for the idea
+        const trademarkResponse = await fetch('/api/trademark-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            brandName: searchQuery,
+            classes: [35, 42], // Default business classes for ideas
+            includeInternational: false
+          })
+        });
+        const trademarkData = await trademarkResponse.json();
+        setTrademarkResult(trademarkData);
+
+        // Composite score will be calculated automatically via useEffect
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-950">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold text-white">
+              Brand Validator
+            </h1>
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-200 mb-4">
+            The fastest brand validation tool on the internet
+          </h2>
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+            Check domain availability, generate brand kits, validate trademarks, and get IP guidance. 
+            Our tool shows comprehensive results as you type, surfacing the best brand options at your fingertips.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Search Box */}
+        <div className="max-w-4xl mx-auto mb-16">
+          <SearchBox onSearch={handleSearch} isLoading={isLoading} />
+        </div>
+
+        {/* Results */}
+        {(domainResult || brandKit || trademarkResult || socialResult || compositeResult) && (
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold text-white mb-2">Search Results</h3>
+              <p className="text-gray-300">Complete brand validation results for your search</p>
+            </div>
+
+            {/* Composite Score Bar */}
+            <CompositeScoreBar 
+              compositeResult={compositeResult} 
+              isLoading={isLoading}
+            />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+              {/* Left Rail - Domain Verify */}
+              <DomainRail
+                domainResult={domainResult}
+                isLoading={isLoading}
+                onAffiliateClick={handleAffiliateClick}
+                onRefresh={handleDomainRefresh}
+              />
+
+              {/* Middle Left Rail - Trademark Search */}
+              <TrademarkSearchResults 
+                result={trademarkResult} 
+                isLoading={isLoading}
+                onAffiliateClick={handleAffiliateClick}
+                onCategoryChange={handleTrademarkCategoryChange}
+              />
+
+              {/* Middle Right Rail - Social Handles */}
+              <SocialHandlesRail 
+                socialResult={socialResult} 
+                isLoading={isLoading}
+              />
+
+              {/* Right Rail - Brand Kit */}
+              <BrandKitRail 
+                brandKit={brandKit} 
+                isLoading={isLoading}
+                onCheckDomain={handleDomainCheck}
+              />
+            </div>
+          </div>
+        )}
+
+
+
+      </div>
     </div>
   );
 }
