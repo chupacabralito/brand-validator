@@ -141,8 +141,8 @@ export class DomainService {
           domain,
           availability: result.available,
           whoisData: result.whoisData,
-          registrarPrices: result.pricing,
-          alternates: result.alternatives,
+          registrarPrices: result.pricing as any,
+          alternates: result.alternatives as any,
           expiresAt,
           createdAt: now,
           updatedAt: now
@@ -150,8 +150,8 @@ export class DomainService {
         update: {
           availability: result.available,
           whoisData: result.whoisData,
-          registrarPrices: result.pricing,
-          alternates: result.alternatives,
+          registrarPrices: result.pricing as any,
+          alternates: result.alternatives as any,
           expiresAt,
           updatedAt: now
         }
