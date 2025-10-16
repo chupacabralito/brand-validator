@@ -39,10 +39,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If it's just a name without TLD, generate variants
+    // If it's just a name without TLD, default to .com and check alternates
     let domainsToCheck = [domain];
+    let isNameOnly = false;
     if (!completeDomainRegex.test(domain) && nameOnlyRegex.test(domain)) {
-      const commonTlds = ['.com', '.io', '.co']; // Reduced to save API credits
+      isNameOnly = true;
+      // Always check .com first, then common alternatives
+      const commonTlds = ['.com', '.net', '.org', '.io', '.co'];
       domainsToCheck = commonTlds.map(tld => domain + tld);
     }
 
@@ -94,28 +97,28 @@ export async function POST(request: NextRequest) {
 
     const responseTime = Date.now() - startTime;
 
-    // If checking multiple domains, return a combined result
+    // If checking multiple domains (name without TLD), always return .com as primary
     let finalResult;
-    if (domainsToCheck.length > 1) {
-      // Find the best available domain (prefer .com, then by score)
-      const availableResults = results.filter(r => r.available);
-      const bestResult = availableResults.find(r => r.tld === '.com') || 
-                        availableResults.sort((a, b) => b.alternates[0]?.score - a.alternates[0]?.score)[0] ||
-                        results[0]; // fallback to first result
+    if (isNameOnly && domainsToCheck.length > 1) {
+      // Always use .com as the primary result
+      const comResult = results.find(r => r.tld === '.com') || results[0];
 
-      // Create alternates from all results
-      const allAlternates = results.map(r => ({
-        domain: r.query,
-        available: r.available,
-        score: r.tld === '.com' ? 100 : r.tld === '.io' ? 90 : r.tld === '.co' ? 85 : 80
-      })).sort((a, b) => b.score - a.score);
+      // Create alternates from all other TLDs
+      const allAlternates = results
+        .filter(r => r.query !== comResult.query) // Exclude the .com result
+        .map(r => ({
+          domain: r.query,
+          available: r.available,
+          score: r.tld === '.net' ? 95 : r.tld === '.org' ? 90 : r.tld === '.io' ? 85 : r.tld === '.co' ? 80 : 75
+        }))
+        .sort((a, b) => b.score - a.score);
 
       finalResult = {
-        ...bestResult,
+        ...comResult,
         alternates: allAlternates,
-        query: domain, // Original query without TLD
+        query: comResult.query, // Show "pvvc.com" not "pvvc"
         root: domain,
-        tld: bestResult.tld
+        tld: '.com'
       };
     } else {
       finalResult = results[0];
