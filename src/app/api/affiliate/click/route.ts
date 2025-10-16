@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { affiliate } from '@/lib/services/affiliates';
 import { AnalyticsService } from '@/lib/services/analytics';
 
+export const dynamic = 'force-dynamic';
+
 const analytics = new AnalyticsService();
 
 export async function GET(request: NextRequest) {

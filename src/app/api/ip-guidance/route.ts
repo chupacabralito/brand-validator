@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { IPService } from '@/lib/services/ip';
 
+export const dynamic = 'force-dynamic';
+
 const ipService = new IPService();
 
 export async function POST(request: NextRequest) {

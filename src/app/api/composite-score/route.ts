@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CompositeScoreService, CompositeScoreInput } from '@/lib/services/compositeScore';
 
+export const dynamic = 'force-dynamic';
+
 const compositeScoreService = new CompositeScoreService();
 
 export async function POST(request: NextRequest) {

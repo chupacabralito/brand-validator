@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TrademarkSearchService } from '@/lib/services/trademarkSearch';
 
+export const dynamic = 'force-dynamic';
+
 const trademarkService = new TrademarkSearchService();
 
 export async function POST(request: NextRequest) {

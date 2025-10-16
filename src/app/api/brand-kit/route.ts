@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BrandKitService, BrandKitInput } from '@/lib/services/brandKit';
 
+export const dynamic = 'force-dynamic';
+
 const brandKitService = new BrandKitService(process.env.AI_MODEL || 'claude-3.5');
 
 export async function POST(request: NextRequest) {

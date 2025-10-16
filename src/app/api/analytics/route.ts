@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AnalyticsService } from '@/lib/services/analytics';
 
+// Mark this route as dynamic to prevent static rendering
+export const dynamic = 'force-dynamic';
+
 const analytics = new AnalyticsService();
 
 export async function GET(request: NextRequest) {

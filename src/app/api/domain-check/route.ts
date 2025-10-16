@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DomainService } from '@/lib/services/domainService';
 import { AnalyticsService } from '@/lib/services/analytics';
 
+export const dynamic = 'force-dynamic';
+
 const domainService = new DomainService();
 const analytics = new AnalyticsService();
 
