@@ -238,7 +238,7 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
   return (
     <StandardContainer
       icon={trademarkIcon}
-      title="Domain Trademark Risk"
+      title="Trademark Check"
       score={`${capitalizedRiskLevel} risk`}
       scoreColor={scoreColor}
       color="purple"
