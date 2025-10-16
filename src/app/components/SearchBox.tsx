@@ -57,16 +57,6 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
         <p className="text-sm text-gray-400">
           Try: "techflow.com" or "AI writing assistant" or "creative design studio"
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            console.log('Test button clicked');
-            onSearch('pvvca.com');
-          }}
-          className="mt-2 px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-        >
-          Test Search (pvvca.com)
-        </button>
       </div>
     </form>
   );
