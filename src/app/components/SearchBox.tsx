@@ -53,11 +53,6 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
           )}
         </button>
       </div>
-      <div className="mt-4 text-center">
-        <p className="text-sm text-gray-400">
-          Try: "techflow.com" or "AI writing assistant" or "creative design studio"
-        </p>
-      </div>
     </form>
   );
 }

@@ -216,9 +216,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       {/* Brand Voice - First Selection */}
       {brandKit.voice && (
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-white text-sm">Brand Voice</h3>
-            {generatingVoice && (
+          {generatingVoice && (
+            <div className="flex items-center justify-end mb-2">
               <span className="text-xs text-blue-400 flex items-center gap-1">
                 <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -226,8 +225,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
                 </svg>
                 Generating...
               </span>
-            )}
-          </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {['modern', 'playful', 'serious'].map((tone) => (
               <button

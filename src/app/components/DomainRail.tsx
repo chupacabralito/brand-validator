@@ -139,7 +139,6 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
 
       {/* H3 - Domain Details */}
       <div className="mb-4">
-        <h3 className="text-sm font-medium text-white mb-3">Domain Status</h3>
         <div className="flex items-center justify-between mb-4">
           <span className="text-lg font-medium text-white">{domainResult.query}</span>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
