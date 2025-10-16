@@ -338,9 +338,10 @@ export default function Home() {
               />
 
               {/* Middle Right Rail - Social Handles */}
-              <SocialHandlesRail 
-                socialResult={socialResult} 
+              <SocialHandlesRail
+                socialResult={socialResult}
                 isLoading={isLoading}
+                onAffiliateClick={handleAffiliateClick}
               />
 
               {/* Right Rail - Brand Kit */}

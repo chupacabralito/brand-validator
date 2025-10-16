@@ -62,38 +62,49 @@ export async function POST(request: NextRequest) {
     );
 
     // Check availability for all domains using real WHOIS API
-    const results = await Promise.all(
+    // Use Promise.allSettled to handle individual failures gracefully
+    const results = await Promise.allSettled(
       domainsToCheck.map(async (domainToCheck) => {
-        try {
-          const domainResult = await domainService.checkDomainAvailability(domainToCheck, true, refresh);
-          
-          // Convert to expected format
-          return {
-            query: domainResult.domain,
-            root: domainResult.domain.split('.')[0],
-            tld: '.' + domainResult.domain.split('.').slice(1).join('.'),
-            available: domainResult.available,
-            alternates: domainResult.alternatives?.map(alt => ({
-              domain: alt.domain,
-              available: alt.available,
-              score: alt.score
-            })) || [],
-            dnsHistoryFlag: domainResult.available ? undefined : 'unknown' as const,
-            registrar: domainResult.registrar,
-            registrationDate: domainResult.registrationDate,
-            expirationDate: domainResult.expirationDate,
-            pricing: domainResult.pricing,
-            lastChecked: domainResult.lastChecked,
-            cacheExpiry: domainResult.cacheExpiry,
-            fromCache: domainResult.fromCache
-          };
-        } catch (error) {
-          console.error(`Error checking ${domainToCheck}:`, error);
-          // Don't return false data - propagate the error
-          throw error;
-        }
+        const domainResult = await domainService.checkDomainAvailability(domainToCheck, false, refresh); // Don't include alternatives for individual checks
+
+        // Convert to expected format
+        return {
+          query: domainResult.domain,
+          root: domainResult.domain.split('.')[0],
+          tld: '.' + domainResult.domain.split('.').slice(1).join('.'),
+          available: domainResult.available,
+          alternates: [], // Will be populated later for the primary result
+          dnsHistoryFlag: domainResult.available ? undefined : 'unknown' as const,
+          registrar: domainResult.registrar,
+          registrationDate: domainResult.registrationDate,
+          expirationDate: domainResult.expirationDate,
+          pricing: domainResult.pricing,
+          lastChecked: domainResult.lastChecked,
+          cacheExpiry: domainResult.cacheExpiry,
+          fromCache: domainResult.fromCache
+        };
       })
     );
+
+    // Filter out failed checks and extract successful results
+    const successfulResults = results
+      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+      .map(result => result.value);
+
+    // Log any failures
+    results
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .forEach((result, index) => {
+        console.error(`Failed to check ${domainsToCheck[index]}:`, result.reason);
+      });
+
+    // If all checks failed, return error
+    if (successfulResults.length === 0) {
+      return NextResponse.json(
+        { error: 'All domain checks failed' },
+        { status: 500 }
+      );
+    }
 
     const responseTime = Date.now() - startTime;
 
@@ -101,10 +112,10 @@ export async function POST(request: NextRequest) {
     let finalResult;
     if (isNameOnly && domainsToCheck.length > 1) {
       // Always use .com as the primary result
-      const comResult = results.find(r => r.tld === '.com') || results[0];
+      const comResult = successfulResults.find(r => r.tld === '.com') || successfulResults[0];
 
-      // Create alternates from all other TLDs
-      const allAlternates = results
+      // Create alternates from all other TLDs that were successfully checked
+      const allAlternates = successfulResults
         .filter(r => r.query !== comResult.query) // Exclude the .com result
         .map(r => ({
           domain: r.query,
@@ -116,12 +127,12 @@ export async function POST(request: NextRequest) {
       finalResult = {
         ...comResult,
         alternates: allAlternates,
-        query: comResult.query, // Show "pvvc.com" not "pvvc"
+        query: comResult.query, // Show "pvvcaaa.com" not "pvvcaaa"
         root: domain,
         tld: '.com'
       };
     } else {
-      finalResult = results[0];
+      finalResult = successfulResults[0];
     }
 
     // Track the search

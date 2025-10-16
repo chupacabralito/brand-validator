@@ -212,8 +212,54 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       scoreColor="blue"
       color="orange"
     >
-      
-      {/* Brand Voice - First Selection */}
+      {/* PRIMARY CTA - Logo Creation */}
+      <div className="mb-6 relative" ref={dropdownRef}>
+        <div className="flex">
+          <button
+            onClick={() => handleAffiliateClick('logoai', 'logo', selectedName || displayNames[0]?.value)}
+            className="flex-1 px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-l-lg hover:bg-blue-700 transition-colors"
+          >
+            Create Logo
+          </button>
+          <button
+            onClick={() => setOpenLogoIndex(openLogoIndex === 0 ? null : 0)}
+            className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-r-lg hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Logo Creator Dropdown */}
+        {openLogoIndex === 0 && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
+            <div className="p-2">
+              <div className="text-xs text-gray-400 mb-2 px-2">Choose Logo Creator</div>
+              {logoCreators.map((creator, creatorIndex) => (
+                <button
+                  key={creatorIndex}
+                  onClick={() => {
+                    handleAffiliateClick(creator.partner, 'logo', selectedName || displayNames[0]?.value);
+                    setOpenLogoIndex(null);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3 rounded"
+                >
+                  <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold text-white ${creator.color.split(' ')[0]}`}>
+                    {creator.name.charAt(0)}
+                  </div>
+                  <span className="flex-1">{creator.name}</span>
+                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Brand Voice - Filter Control */}
       {brandKit.voice && (
         <div className="mb-4">
           {generatingVoice && (
@@ -342,57 +388,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="space-y-2">
-        <h3 className="font-semibold text-white text-sm">Quick Actions</h3>
-        
-        {/* Logo Creation */}
-        <div className="relative" ref={dropdownRef}>
-          <div className="flex">
-            <button
-              onClick={() => handleAffiliateClick('logoai', 'logo', selectedName || displayNames[0]?.value)}
-              className="px-3 py-2 bg-blue-600 text-white text-xs rounded-l hover:bg-blue-700 transition-colors flex items-center gap-1"
-            >
-              Create Logo
-            </button>
-            <button
-              onClick={() => setOpenLogoIndex(openLogoIndex === 0 ? null : 0)}
-              className="px-2 py-2 bg-blue-600 text-white text-xs rounded-r hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Logo Creator Dropdown */}
-          {openLogoIndex === 0 && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-              <div className="p-2">
-                <div className="text-xs text-gray-400 mb-2 px-2">Choose Logo Creator</div>
-                {logoCreators.map((creator, creatorIndex) => (
-                  <button
-                    key={creatorIndex}
-                    onClick={() => {
-                      handleAffiliateClick(creator.partner, 'logo', selectedName || displayNames[0]?.value);
-                      setOpenLogoIndex(null);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3 rounded"
-                  >
-                    <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold text-white ${creator.color.split(' ')[0]}`}>
-                      {creator.name.charAt(0)}
-                    </div>
-                    <span className="flex-1">{creator.name}</span>
-                    <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
+      {/* Secondary Actions */}
+      <div className="space-y-2 mt-6 pt-6 border-t border-gray-700">
         {/* Domain Check */}
         {selectedName && onCheckDomain && (
           <button

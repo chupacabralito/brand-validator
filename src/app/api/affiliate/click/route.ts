@@ -20,7 +20,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validPartners = ['porkbun', 'namecheap', 'godaddy', 'hostinger', 'networksolutions', 'spaceship', 'logoai', 'zoviz', 'logome', 'trademarkfactory', 'trademarkcenter', 'trademarkplus'];
+    const validPartners = [
+      'namecheap', 'godaddy', 'bluehost', 'domaincom', 'hostinger', 'networksolutions', 'spaceship',
+      'logoai', 'zoviz', 'logome',
+      'legalzoom', 'trademarkengine', 'trademarkfactory', 'corpnet', 'rocketlawyer',
+      'buffer', 'hootsuite', 'later', 'linktree'
+    ];
     if (!validPartners.includes(partner)) {
       return NextResponse.json(
         { error: 'Invalid partner' },
@@ -28,7 +33,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validOffers = ['domain', 'brandkit', 'logo', 'trademark', 'search', 'filing'];
+    const validOffers = ['domain', 'brandkit', 'logo', 'trademark', 'search', 'filing', 'social'];
     if (!validOffers.includes(offer)) {
       return NextResponse.json(
         { error: 'Invalid offer type' },
@@ -54,14 +59,17 @@ export async function GET(request: NextRequest) {
     const affiliateId = process.env[`AFF_${partner.toUpperCase()}_ID`] || '';
     
     switch (partner) {
-      case 'porkbun':
-        affiliateLink = affiliate.porkbun(url, affiliateId);
-        break;
       case 'namecheap':
         affiliateLink = affiliate.namecheap(url, affiliateId);
         break;
       case 'godaddy':
         affiliateLink = affiliate.godaddy(url, affiliateId);
+        break;
+      case 'bluehost':
+        affiliateLink = affiliate.bluehost(url, affiliateId);
+        break;
+      case 'domaincom':
+        affiliateLink = affiliate.domaincom(url, affiliateId);
         break;
       case 'hostinger':
         affiliateLink = affiliate.hostinger(url, affiliateId);
@@ -81,14 +89,34 @@ export async function GET(request: NextRequest) {
       case 'logome':
         affiliateLink = affiliate.logome(url, affiliateId);
         break;
+      // Trademark filing services
+      case 'legalzoom':
+        affiliateLink = `https://www.legalzoom.com/business/trademark-registration?aid=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
+      case 'trademarkengine':
+        affiliateLink = `https://www.trademarkengine.com/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
       case 'trademarkfactory':
         affiliateLink = `https://trademarkfactory.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
         break;
-      case 'trademarkcenter':
-        affiliateLink = `https://www.tmcenter.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+      case 'corpnet':
+        affiliateLink = `https://www.corpnet.com/trademark/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
         break;
-      case 'trademarkplus':
-        affiliateLink = `https://www.trademarkplus.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+      case 'rocketlawyer':
+        affiliateLink = `https://www.rocketlawyer.com/business/trademark/?aid=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
+      // Social media management tools
+      case 'buffer':
+        affiliateLink = `https://buffer.com/?ref=${affiliateId}`;
+        break;
+      case 'hootsuite':
+        affiliateLink = `https://www.hootsuite.com/?ref=${affiliateId}`;
+        break;
+      case 'later':
+        affiliateLink = `https://later.com/?ref=${affiliateId}`;
+        break;
+      case 'linktree':
+        affiliateLink = `https://linktr.ee/?ref=${affiliateId}`;
         break;
       default:
         return NextResponse.json({ error: 'Invalid partner' }, { status: 400 });
@@ -151,7 +179,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validPartners = ['porkbun', 'namecheap', 'godaddy', 'hostinger', 'networksolutions', 'spaceship', 'logoai', 'zoviz', 'logome', 'trademarkfactory', 'trademarkcenter', 'trademarkplus'];
+    const validPartners = [
+      'namecheap', 'godaddy', 'bluehost', 'domaincom', 'hostinger', 'networksolutions', 'spaceship',
+      'logoai', 'zoviz', 'logome',
+      'legalzoom', 'trademarkengine', 'trademarkfactory', 'corpnet', 'rocketlawyer',
+      'buffer', 'hootsuite', 'later', 'linktree'
+    ];
     if (!validPartners.includes(partner)) {
       return NextResponse.json(
         { error: 'Invalid partner' },
@@ -159,7 +192,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validOffers = ['domain', 'brandkit', 'logo', 'trademark', 'search', 'filing'];
+    const validOffers = ['domain', 'brandkit', 'logo', 'trademark', 'search', 'filing', 'social'];
     if (!validOffers.includes(offer)) {
       return NextResponse.json(
         { error: 'Invalid offer type' },
@@ -185,14 +218,17 @@ export async function POST(request: NextRequest) {
     const affiliateId = process.env[`AFF_${partner.toUpperCase()}_ID`] || '';
     
     switch (partner) {
-      case 'porkbun':
-        affiliateLink = affiliate.porkbun(url, affiliateId);
-        break;
       case 'namecheap':
         affiliateLink = affiliate.namecheap(url, affiliateId);
         break;
       case 'godaddy':
         affiliateLink = affiliate.godaddy(url, affiliateId);
+        break;
+      case 'bluehost':
+        affiliateLink = affiliate.bluehost(url, affiliateId);
+        break;
+      case 'domaincom':
+        affiliateLink = affiliate.domaincom(url, affiliateId);
         break;
       case 'hostinger':
         affiliateLink = affiliate.hostinger(url, affiliateId);
@@ -212,14 +248,34 @@ export async function POST(request: NextRequest) {
       case 'logome':
         affiliateLink = affiliate.logome(url, affiliateId);
         break;
+      // Trademark filing services
+      case 'legalzoom':
+        affiliateLink = `https://www.legalzoom.com/business/trademark-registration?aid=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
+      case 'trademarkengine':
+        affiliateLink = `https://www.trademarkengine.com/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
       case 'trademarkfactory':
         affiliateLink = `https://trademarkfactory.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
         break;
-      case 'trademarkcenter':
-        affiliateLink = `https://www.tmcenter.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+      case 'corpnet':
+        affiliateLink = `https://www.corpnet.com/trademark/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
         break;
-      case 'trademarkplus':
-        affiliateLink = `https://www.trademarkplus.com/affiliate?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+      case 'rocketlawyer':
+        affiliateLink = `https://www.rocketlawyer.com/business/trademark/?aid=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        break;
+      // Social media management tools
+      case 'buffer':
+        affiliateLink = `https://buffer.com/?ref=${affiliateId}`;
+        break;
+      case 'hootsuite':
+        affiliateLink = `https://www.hootsuite.com/?ref=${affiliateId}`;
+        break;
+      case 'later':
+        affiliateLink = `https://later.com/?ref=${affiliateId}`;
+        break;
+      case 'linktree':
+        affiliateLink = `https://linktr.ee/?ref=${affiliateId}`;
         break;
       default:
         return NextResponse.json({ error: 'Invalid partner' }, { status: 400 });

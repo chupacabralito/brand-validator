@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TrademarkSearchResult, TrademarkMatch, NextStep, BusinessCategory, CategoryRisk } from '@/lib/services/trademarkSearch';
 import StandardContainer from './StandardContainer';
+import AffiliateCTA, { Partner } from './AffiliateCTA';
 
 interface TrademarkSearchResultsProps {
   result: TrademarkSearchResult | null;
@@ -18,6 +19,15 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
     categorySpecificRisks: CategoryRisk[];
     updatedRiskAssessment: any;
   } | null>(null);
+
+  // Trademark filing partners
+  const trademarkPartners: Partner[] = [
+    { name: 'LegalZoom', partner: 'legalzoom', color: 'bg-blue-600' },
+    { name: 'Trademark Engine', partner: 'trademarkengine', color: 'bg-green-600' },
+    { name: 'Trademark Factory', partner: 'trademarkfactory', color: 'bg-purple-600' },
+    { name: 'CorpNet', partner: 'corpnet', color: 'bg-orange-600' },
+    { name: 'Rocket Lawyer', partner: 'rocketlawyer', color: 'bg-red-600' }
+  ];
 
   // Handle category selection
   const handleCategoryChange = async (category: string) => {
@@ -243,6 +253,21 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
       scoreColor={scoreColor}
       color="purple"
     >
+
+      {/* PRIMARY CTA - Trademark Filing */}
+      {onAffiliateClick && (
+        <div className="mb-6">
+          <AffiliateCTA
+            primaryText="File Trademark"
+            partners={trademarkPartners}
+            onAffiliateClick={onAffiliateClick}
+            offer="trademark"
+            targetUrl={result.exactMatches[0]?.mark || result.similarMatches[0]?.mark || 'brand'}
+            context="trademark_check"
+            className="!mt-0 !pt-0 !border-t-0"
+          />
+        </div>
+      )}
 
       {/* Domain Safety Summary */}
       <div className={`mb-4 p-3 rounded-lg border ${

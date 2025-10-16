@@ -92,11 +92,9 @@ function StandardContainer({
           </h2>
         </div>
       )}
-      
+
       {/* H3 - Details and Additional Configurations */}
-      <div className="space-y-4">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

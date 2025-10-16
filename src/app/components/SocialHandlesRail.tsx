@@ -3,17 +3,27 @@
 import { useState } from 'react';
 import { SocialCheckResult } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
+import AffiliateCTA, { Partner } from './AffiliateCTA';
 
 interface SocialHandlesRailProps {
   socialResult: SocialCheckResult | null;
   isLoading: boolean;
+  onAffiliateClick?: (partner: string, offer: string, url: string) => void;
 }
 
-export default function SocialHandlesRail({ socialResult, isLoading }: SocialHandlesRailProps) {
+export default function SocialHandlesRail({ socialResult, isLoading, onAffiliateClick }: SocialHandlesRailProps) {
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
 
   // Priority platforms to show first
   const priorityPlatforms = ['instagram', 'twitter', 'tiktok', 'linkedin', 'youtube'];
+
+  // Social media management partners
+  const socialPartners: Partner[] = [
+    { name: 'Buffer', partner: 'buffer', color: 'bg-blue-600' },
+    { name: 'Hootsuite', partner: 'hootsuite', color: 'bg-purple-600' },
+    { name: 'Later', partner: 'later', color: 'bg-pink-600' },
+    { name: 'Linktree', partner: 'linktree', color: 'bg-green-600' }
+  ];
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -201,6 +211,21 @@ export default function SocialHandlesRail({ socialResult, isLoading }: SocialHan
       scoreColor={availableCount >= totalCount * 0.7 ? 'green' : availableCount >= totalCount * 0.4 ? 'yellow' : 'red'}
       color="green"
     >
+      {/* PRIMARY CTA - Social Management */}
+      {onAffiliateClick && (
+        <div className="mb-6">
+          <AffiliateCTA
+            primaryText="Manage Handles"
+            partners={socialPartners}
+            onAffiliateClick={onAffiliateClick}
+            offer="social"
+            targetUrl={socialResult.baseHandle}
+            context="social_handles"
+            className="!mt-0 !pt-0 !border-t-0"
+          />
+        </div>
+      )}
+
       {/* Simplified Platform List */}
       <div className="space-y-2">
         {visiblePlatforms.map((platform, index) => (
@@ -223,18 +248,15 @@ export default function SocialHandlesRail({ socialResult, isLoading }: SocialHan
               </div>
             </div>
 
-            {/* Single Action Button */}
+            {/* Status Badge */}
             {platform.available ? (
-              <a
-                href={getPlatformUrl(platform.platform, platform.handle)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium hover:bg-green-600/30 transition-colors"
-              >
-                Claim
-              </a>
+              <span className="px-2 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium">
+                Available
+              </span>
             ) : (
-              <span className="text-xs text-gray-500">Taken</span>
+              <span className="px-2 py-1 bg-red-600/20 text-red-400 border border-red-600/30 rounded text-xs font-medium">
+                Taken
+              </span>
             )}
           </div>
         ))}
