@@ -289,15 +289,15 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-4xl font-bold text-white">
-              Brand Validator
+              Domain Hunk
             </h1>
           </div>
           <h2 className="text-2xl font-semibold text-gray-200 mb-4">
-            The fastest brand validation tool on the internet
+            The fastest domain validation tool on the internet
           </h2>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Check domain availability, generate brand kits, validate trademarks, and get IP guidance. 
-            Our tool shows comprehensive results as you type, surfacing the best brand options at your fingertips.
+            Check domain availability, generate brand kits, validate trademarks, and get IP guidance.
+            Our tool shows comprehensive results as you type, surfacing the best domain options at your fingertips.
           </p>
         </div>
 

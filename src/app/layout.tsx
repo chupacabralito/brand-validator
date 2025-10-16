@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Brand Validator - Domain, Brand Kit & IP Guidance',
-  description: 'Validate domains, generate brand kits, and check IP guidance for your business ideas.',
+  title: 'Domain Hunk - Domain Validation, Brand Kits & IP Guidance',
+  description: 'Find your perfect domain with Domain Hunk. Check domain availability, generate brand kits, validate trademarks, and get IP guidance for your business ideas.',
 }
 
 export default function RootLayout({
