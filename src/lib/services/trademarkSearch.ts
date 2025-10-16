@@ -569,8 +569,8 @@ export class TrademarkSearchService {
 
   private async searchAlternativeTrademarkAPI(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      console.log('Using Remarkable API for trademark search:', brandName);
-      
+      console.log('Domain-focused trademark assessment for:', brandName);
+
       // Try Remarkable API first (if API key is available)
       if (process.env.REMARKABLE_API_KEY) {
         try {
@@ -579,60 +579,34 @@ export class TrademarkSearchService {
           console.log('Remarkable API failed, falling back to basic assessment:', error);
         }
       }
-      
-      // Enhanced smart pattern recognition for trademark assessment
-      console.log('Using enhanced smart pattern recognition for:', brandName);
-      
+
       const name = brandName.toLowerCase();
       const matches: TrademarkMatch[] = [];
-      
-      // Comprehensive trademark risk assessment
+
+      // Domain-focused trademark risk assessment
       const riskAssessment = this.assessTrademarkRisk(name);
-      
+
+      // Only show HIGH RISK matches - these are the ones domain buyers need to worry about
       if (riskAssessment.riskLevel === 'high') {
         matches.push({
           mark: brandName.toUpperCase(),
           owner: riskAssessment.owner,
-          status: 'LIKELY_REGISTERED',
-          registrationNumber: 'Unknown',
-          filingDate: 'Unknown',
+          status: 'REGISTERED_TRADEMARK',
+          registrationNumber: 'Verify on USPTO.gov',
+          filingDate: 'Check USPTO database',
           goodsAndServices: riskAssessment.goodsAndServices,
           classes: riskAssessment.classes,
           similarityScore: riskAssessment.similarityScore,
           riskLevel: 'high' as const,
-          notes: riskAssessment.notes
-        });
-      } else if (riskAssessment.riskLevel === 'medium') {
-        matches.push({
-          mark: brandName.toUpperCase(),
-          owner: riskAssessment.owner,
-          status: 'POTENTIALLY_REGISTERED',
-          registrationNumber: 'Unknown',
-          filingDate: 'Unknown',
-          goodsAndServices: riskAssessment.goodsAndServices,
-          classes: riskAssessment.classes,
-          similarityScore: riskAssessment.similarityScore,
-          riskLevel: 'medium' as const,
-          notes: riskAssessment.notes
-        });
-      } else {
-        // Low risk - return no conflicts but note the limitation
-        matches.push({
-          mark: brandName.toUpperCase(),
-          owner: 'No Known Conflicts',
-          status: 'POTENTIALLY_AVAILABLE',
-          registrationNumber: 'N/A',
-          filingDate: 'N/A',
-          goodsAndServices: ['No conflicts detected'],
-          classes: [],
-          similarityScore: 0,
-          riskLevel: 'low' as const,
-          notes: 'No obvious conflicts detected, but this is a basic assessment. Professional trademark search recommended for important brands.'
+          notes: `⚠️ DOMAIN RISK: ${riskAssessment.notes} Using this domain could lead to trademark infringement claims. Consider a different domain.`
         });
       }
-      
+
+      // For low/medium risk, don't show confusing "potential" matches
+      // Domain buyers only care about REAL conflicts
+
       return matches;
-      
+
     } catch (error) {
       console.error('Alternative trademark search failed:', error);
       throw new Error('Trademark search service is currently unavailable. Please try again later.');
@@ -1080,19 +1054,21 @@ export class TrademarkSearchService {
 
   private generateRecommendations(risk: string, factors: string[]): string[] {
     const recommendations = [];
-    
+
     if (risk === 'high') {
-      recommendations.push('Consider choosing a different brand name');
-      recommendations.push('Consult with a trademark attorney immediately');
+      recommendations.push('⚠️ Do NOT purchase this domain - high trademark risk');
+      recommendations.push('Choose a different domain to avoid legal issues');
+      recommendations.push('Consult trademark attorney if you already own this domain');
     } else if (risk === 'medium') {
-      recommendations.push('Conduct additional research on similar marks');
-      recommendations.push('Consider modifying the brand name');
-      recommendations.push('Consult with a trademark attorney for guidance');
+      recommendations.push('Verify trademark status on USPTO.gov before purchasing');
+      recommendations.push('Consider a more distinctive domain name');
+      recommendations.push('Consult attorney if planning commercial use');
     } else {
-      recommendations.push('Proceed with trademark application');
-      recommendations.push('Monitor for conflicting applications');
+      recommendations.push('✅ No major trademark conflicts detected');
+      recommendations.push('Safe to proceed with domain purchase');
+      recommendations.push('Verify availability on USPTO.gov for certainty');
     }
-    
+
     return recommendations;
   }
 

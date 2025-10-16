@@ -238,310 +238,129 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
   return (
     <StandardContainer
       icon={trademarkIcon}
-      title="Trademark Search"
+      title="Domain Trademark Risk"
       score={`${capitalizedRiskLevel} risk`}
       scoreColor={scoreColor}
       color="purple"
     >
 
-      {/* Category Selection */}
-      <div className="mb-4">
-        <h3 className="font-semibold mb-2 text-white text-sm">Business Category</h3>
-        <div className="flex flex-wrap gap-2">
-          {['all', 'Apparel & Fashion', 'Technology & Software', 'Food & Beverage', 'Health & Wellness', 'Beauty & Personal Care', 'Automotive', 'Real Estate', 'Entertainment & Media', 'Education & Training', 'Financial Services'].map((category) => (
-            <button
-              key={category}
-              onClick={() => handleCategoryChange(category)}
-              className={`px-3 py-1 text-xs rounded transition-colors ${
-                selectedCategory === category
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-              }`}
-            >
-              {category === 'all' ? 'All Categories' : category}
-            </button>
-          ))}
+      {/* Domain Safety Summary */}
+      <div className={`mb-4 p-3 rounded-lg border ${
+        riskLevel === 'low' ? 'bg-green-900/20 border-green-600/30' :
+        riskLevel === 'medium' ? 'bg-yellow-900/20 border-yellow-600/30' :
+        'bg-red-900/20 border-red-600/30'
+      }`}>
+        <div className="flex items-start gap-2">
+          <div className="flex-1">
+            <h3 className="font-semibold mb-1 text-white text-sm">
+              {riskLevel === 'low' && '✅ Safe to use this domain'}
+              {riskLevel === 'medium' && '⚠️ Verify before purchasing'}
+              {riskLevel === 'high' && '🛑 High trademark risk - avoid this domain'}
+            </h3>
+            <p className={`text-xs ${riskLevel === 'low' ? 'text-green-300' : riskLevel === 'medium' ? 'text-yellow-300' : 'text-red-300'}`}>
+              {result.riskAssessment.recommendations[0]}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Category Assessment */}
-      <div className="mb-4">
-        <h3 className="font-semibold mb-2 text-white text-sm">Category Assessment</h3>
-        <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
-          {categorySpecificData ? (
-            // Category-specific assessment
-            categorySpecificData.categorySpecificRisks.map((risk, index) => (
-              <div key={index}>
-                {/* 1. Category */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-medium text-white">{risk.category}</span>
-                  {/* 2. Risk Assessment Level */}
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    risk.riskLevel === 'high' ? 'bg-red-600/20 text-red-400 border border-red-600/30' :
-                    risk.riskLevel === 'medium' ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30' :
-                    'bg-green-600/20 text-green-400 border border-green-600/30'
-                  }`}>
-                    {risk.riskLevel.toUpperCase()} RISK
-                  </span>
-                </div>
-                
-                {/* 3. Specific Risks */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-300 mb-2">Specific Risks:</h4>
-                  <ul className="text-xs text-gray-400 space-y-1">
-                    {risk.specificRisks.map((specificRisk, riskIndex) => (
-                      <li key={riskIndex} className="flex items-start">
-                        <span className="text-red-400 mr-2">•</span>
-                        <span>{specificRisk}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                {/* 4. Professional Help Option */}
-                {risk.riskLevel === 'high' && onAffiliateClick && (
-                  <div className="border-t border-gray-700 pt-3">
-                    <h4 className="text-xs font-medium text-gray-300 mb-2">Professional Help</h4>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => onAffiliateClick('trademarkfactory', 'trademark', 'your brand')}
-                        className="w-full bg-blue-600 text-white py-2 px-3 rounded text-xs hover:bg-blue-700 transition-colors"
-                      >
-                        Get Professional Trademark Search
-                      </button>
-                      <button
-                        onClick={() => onAffiliateClick('trademarkcenter', 'search', 'your brand')}
-                        className="w-full bg-gray-600 text-white py-2 px-3 rounded text-xs hover:bg-gray-700 transition-colors"
-                      >
-                        Trademark Research Report
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            // Generic assessment for "All Categories"
-            <div>
-              {/* 1. Category */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-medium text-white">All Categories</span>
-                {/* 2. Risk Assessment Level */}
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  result.riskAssessment.overallRisk === 'high' ? 'bg-red-600/20 text-red-400 border border-red-600/30' :
-                  result.riskAssessment.overallRisk === 'medium' ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30' :
-                  'bg-green-600/20 text-green-400 border border-green-600/30'
-                }`}>
-                  {result.riskAssessment.overallRisk.toUpperCase()} RISK
-                </span>
-              </div>
-              
-              {/* 3. Specific Risks */}
-              <div className="mb-3">
-                <h4 className="text-xs font-medium text-gray-300 mb-2">Risk Factors:</h4>
-                <ul className="text-xs text-gray-400 space-y-1">
-                  {result.riskAssessment.riskFactors.map((riskFactor, riskIndex) => (
-                    <li key={riskIndex} className="flex items-start">
-                      <span className="text-red-400 mr-2">•</span>
-                      <span>{riskFactor}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              {/* 4. Professional Help Option */}
-              {result.riskAssessment.overallRisk === 'high' && onAffiliateClick && (
-                <div className="border-t border-gray-700 pt-3">
-                  <h4 className="text-xs font-medium text-gray-300 mb-2">Professional Help</h4>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => onAffiliateClick('trademarkfactory', 'trademark', 'your brand')}
-                      className="w-full bg-blue-600 text-white py-2 px-3 rounded text-xs hover:bg-blue-700 transition-colors"
-                    >
-                      Get Professional Trademark Search
-                    </button>
-                    <button
-                      onClick={() => onAffiliateClick('trademarkcenter', 'search', 'your brand')}
-                      className="w-full bg-gray-600 text-white py-2 px-3 rounded text-xs hover:bg-gray-700 transition-colors"
-                    >
-                      Trademark Research Report
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+      {/* Risk Factors - Only show if there are actual concerns */}
+      {result.riskAssessment.riskFactors.length > 0 && riskLevel !== 'low' && (
+        <div className="mb-4">
+          <h3 className="font-semibold mb-2 text-white text-sm">Why This Matters</h3>
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+            <ul className="text-xs text-gray-300 space-y-1">
+              {result.riskAssessment.riskFactors.map((riskFactor, riskIndex) => (
+                <li key={riskIndex} className="flex items-start">
+                  <span className="text-yellow-400 mr-2">•</span>
+                  <span>{riskFactor}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Trademark Analysis */}
-      <div className="mb-4">
-        <h3 className="font-semibold mb-3 text-white">Trademark Analysis</h3>
-        
-        {result && (
-          <div className="space-y-6">
-            {/* Trademark Affiliate Buttons */}
-          {/* Similar Matches - Expandable */}
-          {result.similarMatches.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-white text-sm">Similar ({result.similarMatches.length})</h4>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  (categorySpecificData?.updatedRiskAssessment?.overallRisk || result.riskAssessment.overallRisk) === 'high'
-                    ? 'bg-red-600/20 text-red-400 border border-red-600/30'
-                    : (categorySpecificData?.updatedRiskAssessment?.overallRisk || result.riskAssessment.overallRisk) === 'medium'
-                    ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30'
-                    : 'bg-green-600/20 text-green-400 border border-green-600/30'
-                }`}>
-                  {(categorySpecificData?.updatedRiskAssessment?.overallRisk || result.riskAssessment.overallRisk) === 'high' ? 'High Risk' : 
-                   (categorySpecificData?.updatedRiskAssessment?.overallRisk || result.riskAssessment.overallRisk) === 'medium' ? 'Medium Risk' : 'Low Risk'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {result.similarMatches.slice(0, 2).map((match, index) => {
-                  // Convert similarity score to risk level
-                  const getSimilarityLevel = (score: number) => {
-                    if (score >= 80) return { level: 'High', color: 'text-red-400' };
-                    if (score >= 60) return { level: 'Medium', color: 'text-orange-400' };
-                    return { level: 'Low', color: 'text-yellow-400' };
-                  };
-                  
-                  const similarity = getSimilarityLevel(match.similarityScore);
-                  
-                  return (
-                    <div key={index} className="border border-gray-600/30 rounded p-3 bg-gray-800/50">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-white text-sm">{match.mark}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${similarity.color}`}>
-                          {similarity.level} Similarity
-                        </span>
-                      </div>
-                      
-                      <div className="text-xs text-gray-300 space-y-1">
-                        <p className="truncate"><span className="font-medium">Owner:</span> {match.owner}</p>
-                        <p className="truncate"><span className="font-medium">Status:</span> {match.status}</p>
-                        {match.registrationNumber && (
-                          <p className="truncate"><span className="font-medium">Reg #:</span> {match.registrationNumber}</p>
-                        )}
-                        {match.filingDate && (
-                          <p className="truncate"><span className="font-medium">Filed:</span> {new Date(match.filingDate).toLocaleDateString()}</p>
-                        )}
-                        {match.classes.length > 0 && (
-                          <p className="truncate"><span className="font-medium">Classes:</span> {match.classes.join(', ')}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Show all remaining matches */}
-                {result.similarMatches.length > 2 && (
-                  <div className="space-y-2">
-                    {result.similarMatches.slice(2).map((match, index) => {
-                      const getSimilarityLevel = (score: number) => {
-                        if (score >= 80) return { level: 'High', color: 'text-red-400' };
-                        if (score >= 60) return { level: 'Medium', color: 'text-orange-400' };
-                        return { level: 'Low', color: 'text-yellow-400' };
-                      };
-                      
-                      const similarity = getSimilarityLevel(match.similarityScore);
-                      
-                      return (
-                        <div key={index + 2} className="border border-gray-600/30 rounded p-3 bg-gray-800/50">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium text-white text-sm">{match.mark}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${similarity.color}`}>
-                              {similarity.level} Similarity
-                            </span>
-                          </div>
-                          
-                          <div className="text-xs text-gray-300 space-y-1">
-                            <p className="truncate"><span className="font-medium">Owner:</span> {match.owner}</p>
-                            <p className="truncate"><span className="font-medium">Status:</span> {match.status}</p>
-                            {match.registrationNumber && (
-                              <p className="truncate"><span className="font-medium">Reg #:</span> {match.registrationNumber}</p>
-                            )}
-                            {match.filingDate && (
-                              <p className="truncate"><span className="font-medium">Filed:</span> {new Date(match.filingDate).toLocaleDateString()}</p>
-                            )}
-                            {match.classes.length > 0 && (
-                              <p className="truncate"><span className="font-medium">Classes:</span> {match.classes.join(', ')}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+      {/* Trademark Conflicts - Only show HIGH RISK matches */}
+      {(result.exactMatches.length > 0 || result.similarMatches.length > 0) && (
+        <div className="mb-4">
+          <h3 className="font-semibold mb-2 text-white text-sm">Trademark Conflicts</h3>
 
-          {(result.riskAssessment.overallRisk === 'high' || result.riskAssessment.overallRisk === 'medium') && onAffiliateClick && (
-            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-              <h4 className="font-semibold mb-3 text-white text-sm">Get Professional Help</h4>
-              <div className="space-y-2">
-                <button
-                  onClick={() => onAffiliateClick('trademarkfactory', 'trademark', 'your brand')}
-                  className="w-full bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700 transition-colors"
-                >
-                  Professional Trademark Search
-                </button>
-                <button
-                  onClick={() => onAffiliateClick('trademarkcenter', 'search', 'your brand')}
-                  className="w-full bg-gray-600 text-white py-2 px-3 rounded text-sm hover:bg-gray-700 transition-colors"
-                >
-                  Trademark Research Report
-                </button>
-                <button
-                  onClick={() => onAffiliateClick('trademarkplus', 'filing', 'your brand')}
-                  className="w-full bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700 transition-colors"
-                >
-                  Trademark Filing Service
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Exact Matches - Compact */}
+          {/* Exact Matches - HIGH RISK */}
           {result.exactMatches.length > 0 && (
-            <div>
-              <h4 className="font-semibold mb-2 text-red-400 text-sm">Exact Matches ({result.exactMatches.length})</h4>
+            <div className="mb-3">
               <div className="space-y-2">
-                {result.exactMatches.slice(0, 2).map((match, index) => (
-                  <div key={index} className="border border-red-600/30 rounded p-2 bg-red-600/10">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium text-red-300 text-sm">{match.mark}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs ${getRiskColor(match.riskLevel)}`}>
-                        {match.riskLevel.toUpperCase()}
+                {result.exactMatches.map((match, index) => (
+                  <div key={index} className="border border-red-600/30 rounded p-3 bg-red-900/20">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-red-300 text-sm">⚠️ {match.mark}</span>
+                      <span className="px-2 py-0.5 rounded text-xs bg-red-600/20 text-red-400 border border-red-600/30">
+                        HIGH RISK
                       </span>
                     </div>
-                    <div className="text-xs text-gray-300 space-y-1">
-                      <p className="truncate"><span className="font-medium">Owner:</span> {match.owner}</p>
-                      <p className="truncate"><span className="font-medium">Status:</span> {match.status}</p>
-                      {match.registrationNumber && (
-                        <p className="truncate"><span className="font-medium">Reg #:</span> {match.registrationNumber}</p>
-                      )}
-                      {match.filingDate && (
-                        <p className="truncate"><span className="font-medium">Filed:</span> {new Date(match.filingDate).toLocaleDateString()}</p>
-                      )}
-                      {match.classes.length > 0 && (
-                        <p className="truncate"><span className="font-medium">Classes:</span> {match.classes.join(', ')}</p>
-                      )}
+                    <div className="text-xs text-gray-300">
+                      <p><span className="font-medium">Owner:</span> {match.owner}</p>
+                      {match.notes && <p className="mt-1 text-red-300">{match.notes}</p>}
                     </div>
                   </div>
                 ))}
-                {result.exactMatches.length > 2 && (
-                  <div className="text-xs text-gray-400 text-center">
-                    +{result.exactMatches.length - 2} more matches
-                  </div>
-                )}
               </div>
             </div>
           )}
 
-          </div>
-        )}
+          {/* Similar Matches - Only show high similarity */}
+          {result.similarMatches.filter(m => m.similarityScore >= 80).length > 0 && (
+            <div>
+              <div className="space-y-2">
+                {result.similarMatches.filter(m => m.similarityScore >= 80).map((match, index) => (
+                  <div key={index} className="border border-yellow-600/30 rounded p-3 bg-yellow-900/20">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-yellow-300 text-sm">{match.mark}</span>
+                      <span className="px-2 py-0.5 rounded text-xs bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
+                        SIMILAR
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      <p><span className="font-medium">Owner:</span> {match.owner}</p>
+                      {match.notes && <p className="mt-1 text-yellow-300">{match.notes}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No conflicts shown - low risk similar matches exist but aren't concerning */}
+          {result.exactMatches.length === 0 && result.similarMatches.filter(m => m.similarityScore >= 80).length === 0 && result.similarMatches.length > 0 && (
+            <p className="text-xs text-gray-400">
+              Some similar trademarks exist but are not considered high risk for domain use.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* No conflicts at all */}
+      {result.exactMatches.length === 0 && result.similarMatches.length === 0 && riskLevel === 'low' && (
+        <div className="mb-4">
+          <p className="text-xs text-green-300">
+            ✅ No trademark conflicts detected in USPTO database.
+          </p>
+        </div>
+      )}
+
+      {/* USPTO Verification Link */}
+      <div className="mt-4 pt-3 border-t border-gray-700">
+        <a
+          href="https://www.uspto.gov/trademarks/search"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+          Verify on USPTO.gov
+        </a>
       </div>
     </StandardContainer>
   );
