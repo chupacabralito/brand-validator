@@ -651,4 +651,171 @@ Return valid JSON exactly matching the BrandKit type.`;
     }
     return Math.abs(hash);
   }
+
+  /**
+   * Generate voice-specific taglines and logo prompts
+   */
+  async generateVoiceSpecificContent(input: {
+    brandName: string;
+    voice: 'modern' | 'playful' | 'serious';
+    searchTerm: string;
+  }): Promise<{ taglines: string[]; logoPrompts: string[] }> {
+    try {
+      // Try AI generation first
+      const aiContent = await this.generateAIVoiceContent(input);
+      return aiContent;
+    } catch (error) {
+      console.error('AI voice content generation failed, using templates:', error);
+      // Fallback to template-based generation
+      return this.generateTemplateVoiceContent(input);
+    }
+  }
+
+  /**
+   * Generate voice-specific content using AI
+   */
+  private async generateAIVoiceContent(input: {
+    brandName: string;
+    voice: 'modern' | 'playful' | 'serious';
+    searchTerm: string;
+  }): Promise<{ taglines: string[]; logoPrompts: string[] }> {
+    const voiceDescriptions = {
+      modern: 'innovative, cutting-edge, tech-forward, sleek, minimalist',
+      playful: 'fun, energetic, vibrant, creative, friendly, approachable',
+      serious: 'professional, trustworthy, established, premium, reliable'
+    };
+
+    const prompt = {
+      system: `You are a creative brand strategist. Generate taglines and logo concepts that match the specified brand voice. Return ONLY valid JSON with this structure: {"taglines": ["tagline1", "tagline2", ...], "logoPrompts": ["prompt1", "prompt2", ...]}`,
+      user: `Brand: "${input.brandName}"
+Context: ${input.searchTerm}
+Voice: ${input.voice} (${voiceDescriptions[input.voice]})
+
+Generate:
+1. 4 taglines that capture the ${input.voice} voice (short, punchy, memorable)
+2. 3 logo design prompts that match the ${input.voice} aesthetic (describe style, mood, visual elements)`,
+      maxTokens: 400,
+      temperature: 0.8
+    };
+
+    const response = await this.aiService.generateContent(prompt);
+
+    // Parse JSON response
+    try {
+      const cleaned = response
+        .replace(/```json\s*/g, '')
+        .replace(/```\s*/g, '')
+        .trim();
+
+      const jsonStart = cleaned.indexOf('{');
+      const jsonEnd = cleaned.lastIndexOf('}');
+
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        const jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
+        const parsed = JSON.parse(jsonStr);
+
+        return {
+          taglines: (parsed.taglines || []).slice(0, 4).map((t: string) =>
+            t.replace(/^["']|["']$/g, '').trim()
+          ),
+          logoPrompts: (parsed.logoPrompts || []).slice(0, 3).map((p: string) =>
+            p.replace(/^["']|["']$/g, '').trim()
+          )
+        };
+      }
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', parseError);
+    }
+
+    throw new Error('Failed to parse AI voice content');
+  }
+
+  /**
+   * Generate voice-specific content using templates (fallback)
+   */
+  private generateTemplateVoiceContent(input: {
+    brandName: string;
+    voice: 'modern' | 'playful' | 'serious';
+    searchTerm: string;
+  }): { taglines: string[]; logoPrompts: string[] } {
+    const baseWords = input.searchTerm.toLowerCase().split(/\s+/);
+    const coreConcept = this.extractCoreConcept(input.searchTerm, baseWords);
+
+    return {
+      taglines: this.generateVoiceSpecificTaglines(input.voice, coreConcept, input.brandName),
+      logoPrompts: this.generateVoiceSpecificLogoPrompts(input.voice, input.brandName, coreConcept)
+    };
+  }
+
+  /**
+   * Generate taglines for specific voice
+   */
+  private generateVoiceSpecificTaglines(
+    voice: 'modern' | 'playful' | 'serious',
+    coreConcept: string,
+    brandName: string
+  ): string[] {
+    const templates = {
+      modern: [
+        `${coreConcept}, reimagined`,
+        `Next-gen ${coreConcept}`,
+        `Where innovation meets ${coreConcept}`,
+        `${coreConcept} for the future`,
+        `Redefining ${coreConcept}`,
+        `${brandName}: Smart. Simple. Powerful.`
+      ],
+      playful: [
+        `${coreConcept} made fun`,
+        `Love your ${coreConcept}`,
+        `${coreConcept} with a smile`,
+        `Joy in every ${coreConcept}`,
+        `${brandName}: Where fun meets function`,
+        `Brighten your ${coreConcept}`
+      ],
+      serious: [
+        `Professional ${coreConcept}`,
+        `${coreConcept} excellence delivered`,
+        `Trust in ${coreConcept}`,
+        `${brandName}: Quality you can trust`,
+        `Premium ${coreConcept} solutions`,
+        `${coreConcept} done right`
+      ]
+    };
+
+    return this.selectDeterministicItems(templates[voice], brandName, 4);
+  }
+
+  /**
+   * Generate logo prompts for specific voice
+   */
+  private generateVoiceSpecificLogoPrompts(
+    voice: 'modern' | 'playful' | 'serious',
+    brandName: string,
+    coreConcept: string
+  ): string[] {
+    const initial = brandName.charAt(0).toUpperCase();
+
+    const prompts = {
+      modern: [
+        `Minimalist geometric logo for ${brandName}, clean lines, tech-forward aesthetic`,
+        `Abstract letter ${initial} mark, sleek and futuristic design`,
+        `Modern icon representing ${coreConcept}, simple vector style`,
+        `Contemporary wordmark for ${brandName}, sans-serif, bold and minimal`
+      ],
+      playful: [
+        `Friendly rounded logo for ${brandName}, vibrant and approachable`,
+        `Playful letter ${initial} with personality, colorful design`,
+        `Fun icon representing ${coreConcept}, energetic and dynamic`,
+        `Cheerful wordmark for ${brandName}, friendly typography, warm colors`
+      ],
+      serious: [
+        `Professional lettermark for ${brandName}, classic and trustworthy`,
+        `Bold letter ${initial} emblem, established and reliable aesthetic`,
+        `Premium icon representing ${coreConcept}, sophisticated design`,
+        `Corporate wordmark for ${brandName}, strong serif font, authoritative`
+      ]
+    };
+
+    return prompts[voice].slice(0, 3);
+  }
 }

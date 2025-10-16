@@ -8,12 +8,20 @@ interface BrandKitRailProps {
   brandKit: BrandKit | null;
   isLoading: boolean;
   onCheckDomain?: (domain: string) => void;
+  searchTerm?: string;  // Original search term for context
 }
 
-export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: BrandKitRailProps) {
+interface VoiceContent {
+  taglines: string[];
+  logoPrompts: string[];
+}
+
+export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searchTerm }: BrandKitRailProps) {
   const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState<string | null>('all');
+  const [selectedVoice, setSelectedVoice] = useState<string>('modern');
   const [openLogoIndex, setOpenLogoIndex] = useState<number | null>(null);
+  const [voiceCache, setVoiceCache] = useState<Record<string, VoiceContent>>({});
+  const [generatingVoice, setGeneratingVoice] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const logoCreators = [
@@ -38,6 +46,77 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: Bra
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openLogoIndex]);
+
+  // Initialize cache with default modern content when brandKit loads
+  useEffect(() => {
+    if (brandKit && !voiceCache.modern) {
+      setVoiceCache({
+        modern: {
+          taglines: brandKit.taglines || [],
+          logoPrompts: brandKit.logoPrompts || []
+        }
+      });
+    }
+  }, [brandKit]);
+
+  // Handle voice selection
+  const handleVoiceChange = async (voice: string) => {
+    setSelectedVoice(voice);
+    setSelectedName(null); // Reset name selection when voice changes
+
+    // Skip for "all" voice or if we already have cached content
+    if (voice === 'all' || voiceCache[voice]) {
+      return;
+    }
+
+    // Generate voice-specific content
+    if (!brandKit || !searchTerm) return;
+
+    const currentName = selectedName || displayNames[0]?.value;
+    if (!currentName) return;
+
+    setGeneratingVoice(voice);
+
+    try {
+      const response = await fetch('/api/brand-kit/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName: currentName,
+          voice,
+          searchTerm
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate voice-specific content');
+      }
+
+      const data = await response.json();
+
+      // Cache the generated content
+      setVoiceCache(prev => ({
+        ...prev,
+        [voice]: {
+          taglines: data.taglines || [],
+          logoPrompts: data.logoPrompts || []
+        }
+      }));
+
+    } catch (error) {
+      console.error('Voice generation error:', error);
+      // Fallback: use original brand kit content
+      setVoiceCache(prev => ({
+        ...prev,
+        [voice]: {
+          taglines: brandKit.taglines || [],
+          logoPrompts: brandKit.logoPrompts || []
+        }
+      }));
+    } finally {
+      setGeneratingVoice(null);
+    }
+  };
 
   const handleAffiliateClick = (partner: string, offer: string, brand: string) => {
     console.log('Affiliate click:', { partner, offer, brand });
@@ -109,65 +188,23 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: Bra
     );
   }
 
-  // Filter names and taglines based on selected voice
-  const filteredNames = selectedVoice && selectedVoice !== 'all'
+  // Filter names based on selected voice
+  const filteredNames = selectedVoice && selectedVoice !== 'all' && selectedVoice !== 'modern' && selectedVoice !== 'playful' && selectedVoice !== 'serious'
     ? brandKit.nameVariants.filter(variant => variant.tone === selectedVoice)
-    : brandKit.nameVariants;
-
-  // For "all" voice, show all names. For specific voices, show only matching names
-  // If no names match the selected voice, fall back to showing all names with a warning
-  const displayNames = selectedVoice === 'all' 
-    ? brandKit.nameVariants
-    : filteredNames.length > 0 
-      ? filteredNames 
-      : brandKit.nameVariants; // Fallback to all names if no matches
-  
-  const currentName = selectedName || displayNames[0]?.value;
-  
-  // Filter taglines based on selected name and voice
-  const filteredTaglines = (() => {
-    let taglines = brandKit.taglines;
-    
-    // Filter by voice if not 'all'
-    if (selectedVoice && selectedVoice !== 'all') {
-      const voiceKeywords = {
-        'modern': ['innovation', 'future', 'cutting-edge', 'advanced', 'technology', 'digital', 'next', 'breakthrough', 'revolutionary'],
-        'playful': ['fun', 'creative', 'energetic', 'vibrant', 'exciting', 'dynamic', 'fresh', 'inspiring', 'bold'],
-        'serious': ['professional', 'reliable', 'trust', 'quality', 'excellence', 'premium', 'proven', 'established', 'dependable']
-      };
-      const keywords = voiceKeywords[selectedVoice as keyof typeof voiceKeywords] || [];
-      taglines = taglines.filter(tagline => {
-        const taglineLower = tagline.toLowerCase();
-        return keywords.some(keyword => taglineLower.includes(keyword));
-      });
-    }
-    
-    // If we have a selected name, try to filter taglines that work well with that name
-    if (currentName) {
-      const nameLower = currentName.toLowerCase();
-      // Prioritize taglines that contain the brand name or work well with it
-      const nameSpecificTaglines = taglines.filter(tagline => 
-        tagline.toLowerCase().includes(nameLower)
+    : brandKit.nameVariants.filter(variant =>
+        selectedVoice === 'all' || variant.tone === selectedVoice
       );
-      
-      // If we have name-specific taglines, use those; otherwise use all filtered taglines
-      return nameSpecificTaglines.length > 0 ? nameSpecificTaglines : taglines;
-    }
-    
-    return taglines;
-  })();
 
-  // Debug logging
-  console.log('Brand Kit Debug:', {
-    selectedVoice,
-    selectedName,
-    filteredNames: filteredNames.length,
-    displayNames: displayNames.length,
-    filteredTaglines: filteredTaglines.length,
-    allTaglines: brandKit.taglines.length,
-    isFiltered: selectedVoice !== 'all',
-    allNames: brandKit.nameVariants.map(v => ({ name: v.value, tone: v.tone }))
-  });
+  const displayNames = filteredNames.length > 0 ? filteredNames : brandKit.nameVariants;
+  const currentName = selectedName || displayNames[0]?.value;
+
+  // Get voice-specific content from cache or use defaults
+  const currentVoiceContent = selectedVoice === 'all' || !voiceCache[selectedVoice]
+    ? { taglines: brandKit.taglines, logoPrompts: brandKit.logoPrompts }
+    : voiceCache[selectedVoice];
+
+  const displayTaglines = currentVoiceContent.taglines || [];
+  const displayLogoPrompts = currentVoiceContent.logoPrompts || [];
 
   const brandCount = brandKit.nameVariants.length;
 
@@ -183,20 +220,29 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: Bra
       {/* Brand Voice - First Selection */}
       {brandKit.voice && (
         <div className="mb-4">
-          <h3 className="font-semibold mb-2 text-white text-sm">Brand Voice</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-white text-sm">Brand Voice</h3>
+            {generatingVoice && (
+              <span className="text-xs text-blue-400 flex items-center gap-1">
+                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             {['all', 'modern', 'playful', 'serious'].map((tone) => (
               <button
                 key={tone}
-                onClick={() => {
-                  setSelectedVoice(tone);
-                  setSelectedName(null); // Reset name selection when voice changes
-                }}
+                onClick={() => handleVoiceChange(tone)}
+                disabled={generatingVoice !== null}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   selectedVoice === tone
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-                }`}
+                } ${generatingVoice !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {tone === 'all' ? 'All' : tone}
               </button>
@@ -248,34 +294,60 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: Bra
         </div>
       </div>
 
-      {/* Taglines - Dynamic Based on Selected Name */}
+      {/* Taglines - Dynamic Based on Voice */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-white text-sm">Taglines</h3>
-          {currentName && (
+          {selectedVoice && selectedVoice !== 'all' && (
             <span className="text-xs text-blue-400">
-              For {currentName}
+              {selectedVoice} voice
             </span>
           )}
         </div>
         <div className="space-y-1">
-          {filteredTaglines.slice(0, 3).map((tagline, index) => (
+          {displayTaglines.slice(0, 3).map((tagline, index) => (
             <div key={index} className="text-xs text-gray-300 italic break-words">
               "{tagline}"
             </div>
           ))}
-          {filteredTaglines.length > 3 && (
+          {displayTaglines.length > 3 && (
             <div className="text-xs text-gray-500">
-              +{filteredTaglines.length - 3} more
+              +{displayTaglines.length - 3} more
             </div>
           )}
-          {filteredTaglines.length === 0 && (
+          {displayTaglines.length === 0 && (
             <div className="text-xs text-gray-500 italic">
               No taglines available
             </div>
           )}
         </div>
       </div>
+
+      {/* Logo Concepts - Dynamic Based on Voice */}
+      {displayLogoPrompts.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-white text-sm">Logo Concepts</h3>
+            {selectedVoice && selectedVoice !== 'all' && (
+              <span className="text-xs text-blue-400">
+                {selectedVoice} style
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {displayLogoPrompts.slice(0, 2).map((prompt, index) => (
+              <div key={index} className="text-xs text-gray-300 bg-gray-800/50 rounded p-2 border border-gray-700">
+                {prompt}
+              </div>
+            ))}
+            {displayLogoPrompts.length > 2 && (
+              <div className="text-xs text-gray-500">
+                +{displayLogoPrompts.length - 2} more concepts
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="space-y-2">
@@ -341,7 +413,7 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain }: Bra
         {/* Copy Brand Kit */}
         <button
           onClick={() => {
-            const brandKitText = `Brand: ${selectedName || displayNames[0]?.value}\nTaglines: ${filteredTaglines.slice(0, 3).join(', ')}\nVoice: ${selectedVoice === 'all' ? 'All voices' : selectedVoice}`;
+            const brandKitText = `Brand: ${selectedName || displayNames[0]?.value}\nTaglines: ${displayTaglines.slice(0, 3).join(', ')}\nVoice: ${selectedVoice === 'all' ? 'All voices' : selectedVoice}`;
             navigator.clipboard.writeText(brandKitText);
           }}
           className="w-full bg-green-600 text-white py-2 px-3 rounded text-xs hover:bg-green-700 transition-colors"

@@ -344,10 +344,11 @@ export default function Home() {
               />
 
               {/* Right Rail - Brand Kit */}
-              <BrandKitRail 
-                brandKit={brandKit} 
+              <BrandKitRail
+                brandKit={brandKit}
                 isLoading={isLoading}
                 onCheckDomain={handleDomainCheck}
+                searchTerm={query}
               />
             </div>
           </div>
