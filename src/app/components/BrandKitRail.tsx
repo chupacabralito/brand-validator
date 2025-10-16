@@ -64,8 +64,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
     setSelectedVoice(voice);
     setSelectedName(null); // Reset name selection when voice changes
 
-    // Skip for "all" voice or if we already have cached content
-    if (voice === 'all' || voiceCache[voice]) {
+    // Skip if we already have cached content
+    if (voiceCache[voice]) {
       return;
     }
 
@@ -189,19 +189,15 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
   }
 
   // Filter names based on selected voice
-  const filteredNames = selectedVoice && selectedVoice !== 'all' && selectedVoice !== 'modern' && selectedVoice !== 'playful' && selectedVoice !== 'serious'
-    ? brandKit.nameVariants.filter(variant => variant.tone === selectedVoice)
-    : brandKit.nameVariants.filter(variant =>
-        selectedVoice === 'all' || variant.tone === selectedVoice
-      );
-
+  const filteredNames = brandKit.nameVariants.filter(variant => variant.tone === selectedVoice);
   const displayNames = filteredNames.length > 0 ? filteredNames : brandKit.nameVariants;
   const currentName = selectedName || displayNames[0]?.value;
 
   // Get voice-specific content from cache or use defaults
-  const currentVoiceContent = selectedVoice === 'all' || !voiceCache[selectedVoice]
-    ? { taglines: brandKit.taglines, logoPrompts: brandKit.logoPrompts }
-    : voiceCache[selectedVoice];
+  const currentVoiceContent = voiceCache[selectedVoice] || {
+    taglines: brandKit.taglines,
+    logoPrompts: brandKit.logoPrompts
+  };
 
   const displayTaglines = currentVoiceContent.taglines || [];
   const displayLogoPrompts = currentVoiceContent.logoPrompts || [];
@@ -233,18 +229,18 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {['all', 'modern', 'playful', 'serious'].map((tone) => (
+            {['modern', 'playful', 'serious'].map((tone) => (
               <button
                 key={tone}
                 onClick={() => handleVoiceChange(tone)}
                 disabled={generatingVoice !== null}
-                className={`px-3 py-1 text-xs rounded transition-colors ${
+                className={`px-3 py-1 text-xs rounded transition-colors capitalize ${
                   selectedVoice === tone
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
                 } ${generatingVoice !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {tone === 'all' ? 'All' : tone}
+                {tone}
               </button>
             ))}
           </div>
@@ -255,18 +251,16 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-white text-sm">Brand Names</h3>
-          {selectedVoice && selectedVoice !== 'all' && (
-            <span className={`text-xs ${
-              filteredNames.length === 0 
-                ? 'text-yellow-400' 
-                : 'text-blue-400'
-            }`}>
-              {filteredNames.length === 0 
-                ? `No ${selectedVoice} names - showing all`
-                : `${displayNames.length} ${selectedVoice} names`
-              }
-            </span>
-          )}
+          <span className={`text-xs capitalize ${
+            filteredNames.length === 0
+              ? 'text-yellow-400'
+              : 'text-blue-400'
+          }`}>
+            {filteredNames.length === 0
+              ? `No ${selectedVoice} names - showing all`
+              : `${displayNames.length} ${selectedVoice} names`
+            }
+          </span>
         </div>
         <div className="grid grid-cols-1 gap-2">
           {displayNames.slice(0, 4).map((variant, index) => (
@@ -298,8 +292,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-white text-sm">Taglines</h3>
-          {selectedVoice && selectedVoice !== 'all' && (
-            <span className="text-xs text-blue-400">
+          {selectedVoice && (
+            <span className="text-xs text-blue-400 capitalize">
               {selectedVoice} voice
             </span>
           )}
@@ -328,8 +322,8 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-white text-sm">Logo Concepts</h3>
-            {selectedVoice && selectedVoice !== 'all' && (
-              <span className="text-xs text-blue-400">
+            {selectedVoice && (
+              <span className="text-xs text-blue-400 capitalize">
                 {selectedVoice} style
               </span>
             )}
@@ -413,7 +407,7 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
         {/* Copy Brand Kit */}
         <button
           onClick={() => {
-            const brandKitText = `Brand: ${selectedName || displayNames[0]?.value}\nTaglines: ${displayTaglines.slice(0, 3).join(', ')}\nVoice: ${selectedVoice === 'all' ? 'All voices' : selectedVoice}`;
+            const brandKitText = `Brand: ${selectedName || displayNames[0]?.value}\nTaglines: ${displayTaglines.slice(0, 3).join(', ')}\nVoice: ${selectedVoice}`;
             navigator.clipboard.writeText(brandKitText);
           }}
           className="w-full bg-green-600 text-white py-2 px-3 rounded text-xs hover:bg-green-700 transition-colors"
