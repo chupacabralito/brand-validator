@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SocialCheckResult } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 
@@ -9,6 +10,11 @@ interface SocialHandlesRailProps {
 }
 
 export default function SocialHandlesRail({ socialResult, isLoading }: SocialHandlesRailProps) {
+  const [showAllPlatforms, setShowAllPlatforms] = useState(false);
+
+  // Priority platforms to show first
+  const priorityPlatforms = ['instagram', 'twitter', 'tiktok', 'linkedin', 'youtube'];
+
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'instagram':
@@ -99,65 +105,30 @@ export default function SocialHandlesRail({ socialResult, isLoading }: SocialHan
     }
   };
 
-  const generateHandleSuggestions = (baseHandle: string, platform: string) => {
-    const suggestions = [];
-    const cleanHandle = baseHandle.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    
-    // Generate variations
-    suggestions.push(`${cleanHandle}official`);
-    suggestions.push(`the${cleanHandle}`);
-    suggestions.push(`${cleanHandle}app`);
-    suggestions.push(`${cleanHandle}co`);
-    suggestions.push(`${cleanHandle}inc`);
-    suggestions.push(`${cleanHandle}2024`);
-    suggestions.push(`${cleanHandle}official`);
-    suggestions.push(`${cleanHandle}brand`);
-    
-    // Platform-specific suggestions
-    if (platform === 'instagram') {
-      suggestions.push(`${cleanHandle}_official`);
-      suggestions.push(`${cleanHandle}.official`);
-    } else if (platform === 'twitter') {
-      suggestions.push(`${cleanHandle}HQ`);
-      suggestions.push(`${cleanHandle}Official`);
-    }
-    
-    return suggestions.slice(0, 3); // Return top 3 suggestions
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-  };
-
   const getPlatformUrl = (platform: string, handle: string) => {
-    // Remove @ symbol if present and clean the handle
     const cleanHandle = handle.replace('@', '').trim();
-    
-    // Platform-specific registration URLs with username pre-filling
     const normalizedPlatform = platform.toLowerCase();
-    
+
     switch (normalizedPlatform) {
       case 'instagram':
-        return `https://www.instagram.com/accounts/emailsignup/?username=${cleanHandle}`;
+        return `https://www.instagram.com/${cleanHandle}`;
       case 'tiktok':
-        return `https://www.tiktok.com/signup?username=${cleanHandle}`;
+        return `https://www.tiktok.com/@${cleanHandle}`;
       case 'twitter':
-        return `https://twitter.com/i/flow/signup?username=${cleanHandle}`;
+        return `https://twitter.com/${cleanHandle}`;
       case 'youtube':
-        return `https://accounts.google.com/signup?username=${cleanHandle}`;
+        return `https://www.youtube.com/@${cleanHandle}`;
       case 'linkedin':
-        return `https://www.linkedin.com/signup?username=${cleanHandle}`;
+        return `https://www.linkedin.com/in/${cleanHandle}`;
       case 'facebook':
-        return `https://www.facebook.com/r.php?username=${cleanHandle}`;
+        return `https://www.facebook.com/${cleanHandle}`;
       case 'snapchat':
-        return `https://accounts.snapchat.com/accounts/signup?username=${cleanHandle}`;
+        return `https://www.snapchat.com/add/${cleanHandle}`;
       case 'pinterest':
-        return `https://www.pinterest.com/join/?username=${cleanHandle}`;
+        return `https://www.pinterest.com/${cleanHandle}`;
       case 'discord':
-        return `https://discord.com/register?username=${cleanHandle}`;
+        return `https://discord.com/users/${cleanHandle}`;
       default:
-        console.warn(`Unknown platform: ${platform}`);
         return '#';
     }
   };
@@ -208,6 +179,20 @@ export default function SocialHandlesRail({ socialResult, isLoading }: SocialHan
   const totalCount = socialResult.platforms.length;
   const availabilityScore = `${availableCount}/${totalCount} available`;
 
+  // Sort platforms: priority first, then others
+  const sortedPlatforms = [...socialResult.platforms].sort((a, b) => {
+    const aPriority = priorityPlatforms.indexOf(a.platform.toLowerCase());
+    const bPriority = priorityPlatforms.indexOf(b.platform.toLowerCase());
+
+    if (aPriority === -1 && bPriority === -1) return 0;
+    if (aPriority === -1) return 1;
+    if (bPriority === -1) return -1;
+    return aPriority - bPriority;
+  });
+
+  const visiblePlatforms = showAllPlatforms ? sortedPlatforms : sortedPlatforms.slice(0, 5);
+  const hiddenCount = sortedPlatforms.length - 5;
+
   return (
     <StandardContainer
       icon={socialIcon}
@@ -216,178 +201,64 @@ export default function SocialHandlesRail({ socialResult, isLoading }: SocialHan
       scoreColor={availableCount >= totalCount * 0.7 ? 'green' : availableCount >= totalCount * 0.4 ? 'yellow' : 'red'}
       color="green"
     >
-
-      {/* Social Platform Details */}
-      <div className="mb-4">
-        <h3 className="font-semibold mb-3 text-white text-sm">Social Platform Details</h3>
-
-        {/* Platform Grid - Enhanced */}
-        <div className="space-y-3">
-          {socialResult.platforms.map((platform, index) => {
-            const suggestions = !platform.available ? generateHandleSuggestions(platform.handle, platform.platform) : [];
-            
-            return (
-              <div key={index} className="space-y-2">
-                {/* Unified Platform Card with Suggestions */}
-                <div
-                  className={`p-3 rounded-lg border transition-all duration-200 ${
-                    platform.available
-                      ? 'border-green-600/30 bg-green-600/10'
-                      : 'border-red-600/30 bg-red-600/10'
-                  }`}
-                >
-                  {/* Main Platform Info */}
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
-                      {getPlatformIcon(platform.platform)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-white capitalize text-sm">{platform.platform}</span>
-                        <span className="text-xs text-gray-400">{platform.handle.startsWith('@') ? platform.handle : `@${platform.handle}`}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          platform.available
-                            ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                            : 'bg-red-600/20 text-red-300 border border-red-600/30'
-                        }`}>
-                          {platform.available ? 'Available' : 'Taken'}
-                        </span>
-                        {!platform.available && (
-                          <button
-                            onClick={() => {
-                              // For taken handles, link to the actual profile
-                              const cleanHandle = platform.handle.replace('@', '').trim();
-                              const profileUrls = {
-                                instagram: `https://www.instagram.com/${cleanHandle}`,
-                                tiktok: `https://www.tiktok.com/@${cleanHandle}`,
-                                twitter: `https://twitter.com/${cleanHandle}`,
-                                youtube: `https://www.youtube.com/@${cleanHandle}`,
-                                linkedin: `https://www.linkedin.com/in/${cleanHandle}`,
-                                facebook: `https://www.facebook.com/${cleanHandle}`,
-                                snapchat: `https://www.snapchat.com/add/${cleanHandle}`,
-                                pinterest: `https://www.pinterest.com/${cleanHandle}`,
-                                discord: `https://discord.com/users/${cleanHandle}`
-                              };
-                              const url = profileUrls[platform.platform.toLowerCase() as keyof typeof profileUrls] || '#';
-                              console.log(`Opening taken profile: ${url}`);
-                              window.open(url, '_blank', 'noopener,noreferrer');
-                            }}
-                            className="px-2 py-1 bg-gray-600/20 text-gray-300 border border-gray-600/30 rounded text-xs font-medium hover:bg-gray-600/30 transition-colors"
-                            title="View existing profile"
-                          >
-                            View
-                          </button>
-                        )}
-                        {platform.available && (
-                          <>
-                            <button
-                              onClick={() => copyToClipboard(platform.handle)}
-                              className="px-2 py-1 bg-blue-600/20 text-blue-400 border border-blue-600/30 rounded text-xs font-medium hover:bg-blue-600/30 transition-colors"
-                            >
-                              Copy
-                            </button>
-                            <button
-                              onClick={() => {
-                                const url = getPlatformUrl(platform.platform, platform.handle);
-                                console.log(`Opening registration for available handle: ${url}`);
-                                // Copy handle to clipboard as backup
-                                copyToClipboard(platform.handle);
-                                window.open(url, '_blank', 'noopener,noreferrer');
-                              }}
-                              className="px-2 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium hover:bg-green-600/30 transition-colors"
-                              title="Register this available handle (also copied to clipboard)"
-                            >
-                              Register
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Alternative Suggestions - Now Inside Same Container */}
-                  {!platform.available && suggestions.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-600/30">
-                      <div className="text-xs text-gray-400 font-medium text-left mb-2">Alternative suggestions:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {suggestions.map((suggestion, suggestionIndex) => (
-                          <div key={suggestionIndex} className="flex gap-1">
-                            <button
-                              onClick={() => copyToClipboard(suggestion)}
-                              className="px-2 py-1 bg-gray-700/50 text-gray-300 border border-gray-600/30 rounded-l text-xs hover:bg-gray-600/50 transition-colors"
-                            >
-                              @{suggestion}
-                            </button>
-                            <button
-                              onClick={() => {
-                                const url = getPlatformUrl(platform.platform, suggestion);
-                                console.log(`Opening suggestion registration: ${url}`);
-                                // Copy handle to clipboard as backup
-                                copyToClipboard(suggestion);
-                                window.open(url, '_blank', 'noopener,noreferrer');
-                              }}
-                              className="px-2 py-1 bg-gray-600/20 text-gray-300 border border-gray-600/30 rounded-r text-xs hover:bg-gray-600/30 transition-colors"
-                              title="Register this handle (also copied to clipboard)"
-                            >
-                              📝
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+      {/* Simplified Platform List */}
+      <div className="space-y-2">
+        {visiblePlatforms.map((platform, index) => (
+          <div
+            key={index}
+            className="flex items-center justify-between p-2 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors"
+          >
+            {/* Platform Info */}
+            <div className="flex items-center gap-3 flex-1">
+              <div className={`w-6 h-6 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
+                {getPlatformIcon(platform.platform)}
               </div>
-            );
-          })}
-        </div>
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-sm text-white capitalize">{platform.platform}</span>
+                {platform.available ? (
+                  <span className="text-xs text-green-400">✓</span>
+                ) : (
+                  <span className="text-xs text-red-400">✗</span>
+                )}
+              </div>
+            </div>
 
-        {/* Enhanced Summary */}
-        <div className="mt-6 pt-4 border-t border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-white text-sm">Platform Coverage</h4>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              socialResult.overallScore >= 80 
-                ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                : socialResult.overallScore >= 60
-                ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30'
-                : 'bg-red-600/20 text-red-400 border border-red-600/30'
-            }`}>
-              {socialResult.overallScore >= 80 ? 'Excellent' : 
-               socialResult.overallScore >= 60 ? 'Good' : 'Poor'}
-            </span>
+            {/* Single Action Button */}
+            {platform.available ? (
+              <a
+                href={getPlatformUrl(platform.platform, platform.handle)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium hover:bg-green-600/30 transition-colors"
+              >
+                Claim
+              </a>
+            ) : (
+              <span className="text-xs text-gray-500">Taken</span>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="text-center p-3 bg-gray-800/50 rounded-lg">
-              <div className="text-2xl font-bold text-green-400">
-                {socialResult.platforms.filter(p => p.available).length}
-              </div>
-              <div className="text-xs text-gray-400">Available</div>
-            </div>
-            <div className="text-center p-3 bg-gray-800/50 rounded-lg">
-              <div className="text-2xl font-bold text-red-400">
-                {socialResult.platforms.filter(p => !p.available).length}
-              </div>
-              <div className="text-xs text-gray-400">Taken</div>
-            </div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-2">Platform Coverage</div>
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-green-500 to-green-400 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${(socialResult.platforms.filter(p => p.available).length / socialResult.platforms.length) * 100}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {Math.round((socialResult.platforms.filter(p => p.available).length / socialResult.platforms.length) * 100)}% coverage
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
+
+      {/* Show More Button */}
+      {!showAllPlatforms && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAllPlatforms(true)}
+          className="mt-3 w-full px-3 py-2 bg-gray-800/50 text-gray-400 border border-gray-700/50 rounded text-xs hover:bg-gray-700/50 hover:text-gray-300 transition-colors"
+        >
+          Show {hiddenCount} more platform{hiddenCount !== 1 ? 's' : ''}...
+        </button>
+      )}
+
+      {/* Show Less Button */}
+      {showAllPlatforms && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAllPlatforms(false)}
+          className="mt-3 w-full px-3 py-2 bg-gray-800/50 text-gray-400 border border-gray-700/50 rounded text-xs hover:bg-gray-700/50 hover:text-gray-300 transition-colors"
+        >
+          Show less...
+        </button>
+      )}
     </StandardContainer>
   );
 }
