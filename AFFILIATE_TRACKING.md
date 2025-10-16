@@ -216,6 +216,17 @@ Use this space to track application dates, approval status, etc:
   - Domain.com (may be available)
   - Check AWIN for other domain/hosting programs
 
+### Impact.com Network ✅
+- **Platform:** https://impact.com
+- **Verification:** ✅ Meta tag deployed to https://domainhunk.com
+- **Verification Code:** 315d124e-5765-432e-b58f-621ae04015b7
+- Status: ⏳ Awaiting final approval after verification
+- Notes: Major affiliate network with many domain/hosting partners
+- Available Programs to Join:
+  - GoDaddy (likely available)
+  - Hostinger (likely available)
+  - Various domain/hosting services
+
 ### LogoAI ✅
 - Applied: [Already set up]
 - Approved: [Already approved]

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import SearchBox from '@/app/components/SearchBox';
 import DomainRail from '@/app/components/DomainRail';
 import BrandKitRail from '@/app/components/BrandKitRail';
@@ -283,10 +284,14 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
+            <div className="mr-3">
+              <Image
+                src="/logo.png"
+                alt="Domain Hunk Logo"
+                width={64}
+                height={64}
+                priority
+              />
             </div>
             <h1 className="text-4xl font-bold text-white">
               Domain Hunk
