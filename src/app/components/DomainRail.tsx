@@ -13,7 +13,7 @@ interface DomainRailProps {
 
 export default function DomainRail({ domainResult, isLoading, onAffiliateClick, onRefresh }: DomainRailProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [openAlternateIndex, setOpenAlternateIndex] = useState<number | null>(null);
+  const [selectedRegistrar, setSelectedRegistrar] = useState<string>('godaddy'); // Default registrar for alternatives
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Debug logging
@@ -26,18 +26,17 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
-        setOpenAlternateIndex(null);
       }
     };
 
-    if (isDropdownOpen || openAlternateIndex !== null) {
+    if (isDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDropdownOpen, openAlternateIndex]);
+  }, [isDropdownOpen]);
 
   const domainRegistrars = [
     { name: 'GoDaddy', partner: 'godaddy', color: 'bg-green-600 hover:bg-green-700' },
@@ -191,108 +190,61 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
           <div>
             {domainResult.alternates && domainResult.alternates.length > 0 ? (
               <>
-                <h3 className="font-semibold mb-3 text-white text-base">Available Alternatives</h3>
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-3 text-white text-base">Available Alternatives</h3>
+
+                  {/* Global Registrar Selector */}
+                  <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+                    <label className="block text-xs text-gray-400 mb-2">Preferred Registrar</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {domainRegistrars.slice(0, 6).map((registrar) => (
+                        <button
+                          key={registrar.partner}
+                          onClick={() => setSelectedRegistrar(registrar.partner)}
+                          className={`px-2 py-2 text-xs font-medium rounded transition-all ${
+                            selectedRegistrar === registrar.partner
+                              ? 'bg-blue-600 text-white border-2 border-blue-400'
+                              : 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:border-gray-500'
+                          }`}
+                        >
+                          {registrar.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Simplified Domain List */}
                 <div className="space-y-2">
                   {domainResult.alternates.map((alt, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
-                      <span className="text-sm text-white">{alt.domain}</span>
-                      {alt.available === undefined ? (
-                        <div className="relative">
-                          <div className="flex">
-                            <button
-                              onClick={() => handleAffiliateClick('godaddy', 'domain', alt.domain)}
-                              className="px-3 py-1 bg-blue-600 text-white text-xs rounded-l hover:bg-blue-700 transition-colors"
-                            >
-                              Continue
-                            </button>
-                            <button
-                              onClick={() => setOpenAlternateIndex(openAlternateIndex === index ? null : index)}
-                              className="px-2 py-1 bg-blue-600 text-white text-xs rounded-r hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                          {openAlternateIndex === index && (
-                            <div className="absolute top-full right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-                              <div className="p-2">
-                                <div className="text-xs text-gray-400 mb-2 px-2">Choose Registrar</div>
-                                {domainRegistrars.map((registrar, regIndex) => (
-                                  <button
-                                    key={regIndex}
-                                    onClick={() => {
-                                      handleAffiliateClick(registrar.partner, 'domain', alt.domain);
-                                      setOpenAlternateIndex(null);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3 rounded"
-                                  >
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold text-white ${registrar.color.split(' ')[0]}`}>
-                                      {registrar.name.charAt(0)}
-                                    </div>
-                                    <span className="flex-1">{registrar.name}</span>
-                                    <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : alt.available ? (
-                        <div className="relative">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded border border-green-600/30">
-                              Available
-                            </span>
-                            <div className="flex">
-                              <button
-                                onClick={() => handleAffiliateClick('godaddy', 'domain', alt.domain)}
-                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded-l hover:bg-blue-700 transition-colors"
-                              >
-                                Continue
-                              </button>
-                              <button
-                                onClick={() => setOpenAlternateIndex(openAlternateIndex === index ? null : index)}
-                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded-r hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                          {openAlternateIndex === index && (
-                            <div className="absolute top-full right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-                              <div className="p-2">
-                                <div className="text-xs text-gray-400 mb-2 px-2">Choose Registrar</div>
-                                {domainRegistrars.map((registrar, regIndex) => (
-                                  <button
-                                    key={regIndex}
-                                    onClick={() => {
-                                      handleAffiliateClick(registrar.partner, 'domain', alt.domain);
-                                      setOpenAlternateIndex(null);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3 rounded"
-                                  >
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold text-white ${registrar.color.split(' ')[0]}`}>
-                                      {registrar.name.charAt(0)}
-                                    </div>
-                                    <span className="flex-1">{registrar.name}</span>
-                                    <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="px-2 py-1 bg-red-600/20 text-red-400 text-xs rounded border border-red-600/30">
-                          Taken
-                        </span>
+                    <div
+                      key={index}
+                      className="group flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 hover:bg-gray-800 transition-all"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-sm font-medium text-white truncate">{alt.domain}</span>
+                        {alt.available !== undefined && (
+                          <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
+                            alt.available
+                              ? 'bg-green-600/20 text-green-400 border border-green-600/30'
+                              : 'bg-red-600/20 text-red-400 border border-red-600/30'
+                          }`}>
+                            {alt.available ? 'Available' : 'Taken'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Only show Register button if available or status unknown */}
+                      {(alt.available === undefined || alt.available) && (
+                        <button
+                          onClick={() => handleAffiliateClick(selectedRegistrar, 'domain', alt.domain)}
+                          className="px-4 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                        >
+                          Register
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
                       )}
                     </div>
                   ))}
@@ -400,15 +352,41 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
       {/* Additional Alternatives for Available Domains */}
       {domainResult.available && domainResult.alternates && domainResult.alternates.length > 0 && (
         <div className="mt-6 pt-4 border-t border-gray-700">
-          <h3 className="font-semibold mb-3 text-white text-sm">More Alternatives</h3>
+          <div className="mb-4">
+            <h3 className="font-semibold mb-3 text-white text-sm">More Alternatives</h3>
 
+            {/* Global Registrar Selector */}
+            <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+              <label className="block text-xs text-gray-400 mb-2">Preferred Registrar</label>
+              <div className="grid grid-cols-3 gap-2">
+                {domainRegistrars.slice(0, 6).map((registrar) => (
+                  <button
+                    key={registrar.partner}
+                    onClick={() => setSelectedRegistrar(registrar.partner)}
+                    className={`px-2 py-2 text-xs font-medium rounded transition-all ${
+                      selectedRegistrar === registrar.partner
+                        ? 'bg-blue-600 text-white border-2 border-blue-400'
+                        : 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:border-gray-500'
+                    }`}
+                  >
+                    {registrar.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Simplified Domain List */}
           <div className="space-y-2">
             {domainResult.alternates.map((alt, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gray-800/50 rounded border border-gray-700/50 hover:border-gray-600 transition-colors">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm text-white truncate">{alt.domain}</span>
+              <div
+                key={index}
+                className="group flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 hover:bg-gray-800 transition-all"
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-sm font-medium text-white truncate">{alt.domain}</span>
                   {alt.available !== undefined && (
-                    <span className={`px-2 py-0.5 text-xs rounded font-medium whitespace-nowrap ${
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
                       alt.available
                         ? 'bg-green-600/20 text-green-400 border border-green-600/30'
                         : 'bg-red-600/20 text-red-400 border border-red-600/30'
@@ -418,53 +396,17 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
                   )}
                 </div>
 
-                {/* Only show CTA if available or status unknown */}
+                {/* Only show Register button if available or status unknown */}
                 {(alt.available === undefined || alt.available) && (
-                  <div className="relative flex-shrink-0">
-                    <div className="flex">
-                      <button
-                        onClick={() => handleAffiliateClick('godaddy', 'domain', alt.domain)}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-l hover:bg-blue-700 transition-colors"
-                      >
-                        Continue
-                      </button>
-                      <button
-                        onClick={() => setOpenAlternateIndex(openAlternateIndex === index ? null : index)}
-                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded-r hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Dropdown for this alternate */}
-                    {openAlternateIndex === index && (
-                      <div className="absolute top-full right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-                        <div className="p-2">
-                          <div className="text-xs text-gray-400 mb-2 px-2">Choose Registrar</div>
-                          {domainRegistrars.map((registrar, regIndex) => (
-                            <button
-                              key={regIndex}
-                              onClick={() => {
-                                handleAffiliateClick(registrar.partner, 'domain', alt.domain);
-                                setOpenAlternateIndex(null);
-                              }}
-                              className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-gray-700 transition-colors flex items-center gap-2 rounded"
-                            >
-                              <div className={`w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white ${registrar.color.split(' ')[0]}`}>
-                                {registrar.name.charAt(0)}
-                              </div>
-                              <span className="flex-1">{registrar.name}</span>
-                              <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    onClick={() => handleAffiliateClick(selectedRegistrar, 'domain', alt.domain)}
+                    className="px-4 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                  >
+                    Register
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 )}
               </div>
             ))}
