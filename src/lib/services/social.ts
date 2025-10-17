@@ -1,6 +1,8 @@
 import { SocialCheckResult, SocialHandleResult } from '../models/DomainResult';
 import { SocialHandleHeuristics } from './socialHeuristics';
 
+type SocialPlatform = "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord";
+
 export class SocialService {
   private heuristics: SocialHandleHeuristics;
 
@@ -32,7 +34,7 @@ export class SocialService {
     };
   }
 
-  private checkPlatform(handle: string, platform: string): SocialHandleResult {
+  private checkPlatform(handle: string, platform: SocialPlatform): SocialHandleResult {
     const evaluation = this.heuristics.evaluateHandle(handle, platform);
 
     return {
