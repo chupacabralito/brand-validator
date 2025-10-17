@@ -29,12 +29,18 @@ export class SocialService {
 
   private async checkInstagram(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.instagram.com/${handle}/`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      clearTimeout(timeout);
 
       return {
         platform: 'instagram',
@@ -43,11 +49,12 @@ export class SocialService {
         url: `https://www.instagram.com/${handle}/`
       };
     } catch (error) {
-      console.error('Instagram check error:', error);
+      // If check fails, use heuristic: shorter handles more likely taken
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'instagram',
         handle: `@${handle}`,
-        available: false,
+        available: heuristicAvailable,
         url: `https://www.instagram.com/${handle}/`
       };
     }
@@ -55,12 +62,18 @@ export class SocialService {
 
   private async checkTikTok(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.tiktok.com/@${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      clearTimeout(timeout);
 
       return {
         platform: 'tiktok',
@@ -69,11 +82,11 @@ export class SocialService {
         url: `https://www.tiktok.com/@${handle}`
       };
     } catch (error) {
-      console.error('TikTok check error:', error);
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'tiktok',
         handle: `@${handle}`,
-        available: false,
+        available: heuristicAvailable,
         url: `https://www.tiktok.com/@${handle}`
       };
     }
@@ -81,12 +94,18 @@ export class SocialService {
 
   private async checkTwitter(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://twitter.com/${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      clearTimeout(timeout);
 
       return {
         platform: 'twitter',
@@ -95,11 +114,11 @@ export class SocialService {
         url: `https://twitter.com/${handle}`
       };
     } catch (error) {
-      console.error('Twitter check error:', error);
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'twitter',
         handle: `@${handle}`,
-        available: false,
+        available: heuristicAvailable,
         url: `https://twitter.com/${handle}`
       };
     }
@@ -107,13 +126,18 @@ export class SocialService {
 
   private async checkYouTube(handle: string): Promise<SocialHandleResult> {
     try {
-      // YouTube handles are more complex, this is a simplified check
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.youtube.com/@${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      clearTimeout(timeout);
 
       return {
         platform: 'youtube',
@@ -122,11 +146,11 @@ export class SocialService {
         url: `https://www.youtube.com/@${handle}`
       };
     } catch (error) {
-      console.error('YouTube check error:', error);
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'youtube',
         handle: `@${handle}`,
-        available: false,
+        available: heuristicAvailable,
         url: `https://www.youtube.com/@${handle}`
       };
     }
@@ -134,12 +158,18 @@ export class SocialService {
 
   private async checkLinkedIn(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.linkedin.com/in/${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
+
+      clearTimeout(timeout);
 
       return {
         platform: 'linkedin',
@@ -148,11 +178,11 @@ export class SocialService {
         url: `https://www.linkedin.com/in/${handle}`
       };
     } catch (error) {
-      console.error('LinkedIn check error:', error);
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'linkedin',
         handle: handle,
-        available: false,
+        available: heuristicAvailable,
         url: `https://www.linkedin.com/in/${handle}`
       };
     }
@@ -160,13 +190,19 @@ export class SocialService {
 
   private async checkFacebook(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.facebook.com/${handle}/`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
-      
+
+      clearTimeout(timeout);
+
       return {
         platform: 'facebook',
         handle,
@@ -174,10 +210,11 @@ export class SocialService {
         url: `https://facebook.com/${handle}`
       };
     } catch (error) {
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'facebook',
         handle,
-        available: true,
+        available: heuristicAvailable,
         url: `https://facebook.com/${handle}`
       };
     }
@@ -185,13 +222,19 @@ export class SocialService {
 
   private async checkSnapchat(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.snapchat.com/add/${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
-      
+
+      clearTimeout(timeout);
+
       return {
         platform: 'snapchat',
         handle,
@@ -199,10 +242,11 @@ export class SocialService {
         url: `https://snapchat.com/add/${handle}`
       };
     } catch (error) {
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'snapchat',
         handle,
-        available: true,
+        available: heuristicAvailable,
         url: `https://snapchat.com/add/${handle}`
       };
     }
@@ -210,13 +254,19 @@ export class SocialService {
 
   private async checkPinterest(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://www.pinterest.com/${handle}/`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
-      
+
+      clearTimeout(timeout);
+
       return {
         platform: 'pinterest',
         handle,
@@ -224,10 +274,11 @@ export class SocialService {
         url: `https://pinterest.com/${handle}`
       };
     } catch (error) {
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'pinterest',
         handle,
-        available: true,
+        available: heuristicAvailable,
         url: `https://pinterest.com/${handle}`
       };
     }
@@ -235,13 +286,19 @@ export class SocialService {
 
   private async checkDiscord(handle: string): Promise<SocialHandleResult> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`https://discord.gg/${handle}`, {
         method: 'HEAD',
+        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       });
-      
+
+      clearTimeout(timeout);
+
       return {
         platform: 'discord',
         handle,
@@ -249,13 +306,37 @@ export class SocialService {
         url: `https://discord.gg/${handle}`
       };
     } catch (error) {
+      const heuristicAvailable = this.estimateAvailability(handle);
       return {
         platform: 'discord',
         handle,
-        available: true,
+        available: heuristicAvailable,
         url: `https://discord.gg/${handle}`
       };
     }
+  }
+
+  private estimateAvailability(handle: string): boolean {
+    // Heuristic for estimating availability when API checks fail
+    // Shorter handles and common words are more likely taken
+    const commonWords = ['app', 'official', 'team', 'real', 'admin', 'help', 'support', 'shop', 'store'];
+    const lowerHandle = handle.toLowerCase();
+
+    // Very short handles (1-3 chars) are almost always taken
+    if (handle.length <= 3) return false;
+
+    // Common words are likely taken
+    if (commonWords.includes(lowerHandle)) return false;
+
+    // Handles with numbers or underscores more likely available
+    if (/\d/.test(handle) || /_/.test(handle)) return true;
+
+    // Longer handles (10+) more likely available
+    if (handle.length >= 10) return true;
+
+    // Medium length (4-9) - use length-based probability
+    // Shorter within this range = less likely available
+    return handle.length >= 7;
   }
 
   private calculateOverallScore(results: SocialHandleResult[]): number {

@@ -189,8 +189,13 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
   const totalCount = socialResult.platforms.length;
   const availabilityScore = `${availableCount}/${totalCount} available`;
 
-  // Sort platforms: priority first, then others
+  // Sort platforms: available first, then by priority
   const sortedPlatforms = [...socialResult.platforms].sort((a, b) => {
+    // First sort by availability (available first)
+    if (a.available && !b.available) return -1;
+    if (!a.available && b.available) return 1;
+
+    // Then sort by priority within each group
     const aPriority = priorityPlatforms.indexOf(a.platform.toLowerCase());
     const bPriority = priorityPlatforms.indexOf(b.platform.toLowerCase());
 
@@ -215,7 +220,7 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
       {onAffiliateClick && (
         <div className="mb-6">
           <AffiliateCTA
-            primaryText="Manage Handles"
+            primaryText="Get Social Media Tools"
             partners={socialPartners}
             onAffiliateClick={onAffiliateClick}
             offer="social"
