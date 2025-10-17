@@ -22,6 +22,8 @@ export type SocialHandleResult = {
   url: string;
   followerCount?: number;
   verified?: boolean;
+  confidence?: number; // 0-100, how confident the heuristic is
+  factors?: string[]; // reasons for the availability assessment
 }
 
 export type SocialCheckResult = {

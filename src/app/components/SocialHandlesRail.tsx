@@ -231,37 +231,68 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
         </div>
       )}
 
+      {/* Disclaimer */}
+      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+        <p className="text-xs text-blue-300">
+          <span className="font-semibold">Estimated Availability:</span> Results are based on handle patterns and characteristics. Always verify directly on each platform before registering.
+        </p>
+      </div>
+
       {/* Simplified Platform List */}
       <div className="space-y-2">
         {visiblePlatforms.map((platform, index) => (
           <div
             key={index}
-            className="flex items-center justify-between p-2 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors"
+            className="p-3 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors"
           >
-            {/* Platform Info */}
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`w-6 h-6 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
-                {getPlatformIcon(platform.platform)}
+            {/* Main Row */}
+            <div className="flex items-center justify-between mb-2">
+              {/* Platform Info */}
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`w-6 h-6 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
+                  {getPlatformIcon(platform.platform)}
+                </div>
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm text-white capitalize font-medium">{platform.platform}</span>
+                  {platform.available ? (
+                    <span className="text-xs text-green-400">✓</span>
+                  ) : (
+                    <span className="text-xs text-red-400">✗</span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-sm text-white capitalize">{platform.platform}</span>
-                {platform.available ? (
-                  <span className="text-xs text-green-400">✓</span>
-                ) : (
-                  <span className="text-xs text-red-400">✗</span>
-                )}
-              </div>
+
+              {/* Status Badge */}
+              {platform.available ? (
+                <span className="px-2 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium">
+                  Likely Available
+                </span>
+              ) : (
+                <span className="px-2 py-1 bg-red-600/20 text-red-400 border border-red-600/30 rounded text-xs font-medium">
+                  Likely Taken
+                </span>
+              )}
             </div>
 
-            {/* Status Badge */}
-            {platform.available ? (
-              <span className="px-2 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium">
-                Available
-              </span>
-            ) : (
-              <span className="px-2 py-1 bg-red-600/20 text-red-400 border border-red-600/30 rounded text-xs font-medium">
-                Taken
-              </span>
+            {/* Confidence & Factors */}
+            {platform.confidence !== undefined && (
+              <div className="flex items-center gap-3 mt-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-400">Confidence:</span>
+                  <span className={`text-xs font-medium ${
+                    platform.confidence >= 70 ? 'text-green-400' :
+                    platform.confidence >= 40 ? 'text-yellow-400' :
+                    'text-gray-400'
+                  }`}>
+                    {platform.confidence}%
+                  </span>
+                </div>
+                {platform.factors && platform.factors.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    • {platform.factors[0]}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         ))}
