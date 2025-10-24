@@ -41,7 +41,7 @@ All business logic lives in service classes that are instantiated in API routes:
 - **domainService.ts**: Domain availability checking via WHOIS API and Namecheap. **Note**: DNS-only checks are unreliable - uses real APIs only.
 - **registrar.ts**: Domain registrar integrations and pricing data
 - **social.ts**: Social media handle availability checking (Instagram, TikTok, Twitter, YouTube, LinkedIn)
-- **trademarkSearch.ts**: Trademark search across USPTO, EUIPO, UKIPO, WIPO databases
+- **trademarkSearch.ts**: Trademark search using Marker API (primary) or USPTO API (fallback). Searches USPTO trademark database with comprehensive matching and risk assessment
 - **compositeScore.ts**: Weighted scoring algorithm combining domain, social, trademark, and brand data
 - **affiliates.ts**: Affiliate link generation and click tracking
 - **analytics.ts**: Event tracking and session management
@@ -112,6 +112,11 @@ NAMECHEAP_API_USER=...
 NAMECHEAP_USERNAME=...
 NAMECHEAP_CLIENT_IP=...
 
+# Trademark Search (recommended - free tier: 1,000 searches/month)
+MARKER_API_USERNAME=...    # Marker API username (https://markerapi.com)
+MARKER_API_PASSWORD=...    # Marker API password
+USPTO_API_KEY=...          # USPTO API key (fallback if Marker not configured)
+
 # Database
 DATABASE_URL=file:./brand-validator.db
 ```
@@ -168,6 +173,33 @@ Brand kits are generated with template-based fallbacks for structural elements (
 - Taglines: **AI-required** (no templates allowed)
 - Colors/Typography: Template-based with industry detection
 - Logo prompts: Template-based with term interpolation
+
+### Trademark Search Strategy
+
+Trademark searches use a tiered approach with Marker API as primary source:
+
+1. **Marker API** (primary - recommended): Professional trademark search API with 1,000 free searches/month
+   - REST API returning JSON with trademark data from USPTO database
+   - Supports status filtering (active/all), pagination (100 results per page)
+   - Returns serial numbers, registration numbers, owners, status, classes, goods/services
+   - Automatic similarity scoring and risk assessment
+   - URL format: `https://markerapi.com/api/v2/trademarks/trademark/{term}/status/{status}/start/{start}/username/{user}/password/{pass}`
+
+2. **USPTO API** (fallback): Official USPTO TSDR API
+   - Used if Marker API not configured
+   - Free but may have reliability issues
+   - Requires USPTO_API_KEY
+
+3. **Rule-based assessment** (last resort): Identifies known high-risk brands
+   - Only used if both APIs fail
+   - Checks against database of major tech brands and common trademark terms
+   - Returns low risk for unique names, high risk for known brands
+
+The service automatically calculates:
+- Similarity scores using Levenshtein distance
+- Risk levels (high/medium/low) based on similarity and trademark status
+- Trademark class overlaps
+- Brand name variations and phonetic matches
 
 ### Composite Scoring Algorithm
 

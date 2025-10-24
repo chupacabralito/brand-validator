@@ -66,12 +66,37 @@ export interface CategoryRisk {
   marketSaturation: number;
 }
 
+// Marker API response interfaces
+interface MarkerAPITrademark {
+  serial_number?: string;
+  registration_number?: string;
+  trademark: string;
+  owner: string;
+  status: string;
+  status_date?: string;
+  filing_date?: string;
+  registration_date?: string;
+  description?: string;
+  class_codes?: string;
+  goods_services?: string;
+}
+
+interface MarkerAPIResponse {
+  count: number;
+  next?: number; // Pagination: next start index if more results available
+  trademarks: MarkerAPITrademark[];
+}
+
 export class TrademarkSearchService {
   private usptoApiKey: string;
+  private markerApiUsername: string;
+  private markerApiPassword: string;
   private searchHistory: Map<string, TrademarkSearchResult> = new Map();
 
-  constructor(usptoApiKey?: string) {
+  constructor(usptoApiKey?: string, markerApiUsername?: string, markerApiPassword?: string) {
     this.usptoApiKey = usptoApiKey || process.env.USPTO_API_KEY || '';
+    this.markerApiUsername = markerApiUsername || process.env.MARKER_API_USERNAME || '';
+    this.markerApiPassword = markerApiPassword || process.env.MARKER_API_PASSWORD || '';
   }
 
   async performComprehensiveSearch(
@@ -138,15 +163,162 @@ export class TrademarkSearchService {
 
   private async searchExactMatches(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      // Use USPTO TESS API - NO SIMULATION ALLOWED
-      if (!this.usptoApiKey) {
-        throw new Error('USPTO API key required for trademark search. No simulated data allowed.');
+      // Try Marker API first (preferred - more reliable)
+      if (this.markerApiUsername && this.markerApiPassword) {
+        console.log('Using Marker API for trademark search...');
+        return await this.searchMarkerAPI(brandName, 'all');
       }
-      return await this.searchUSPTOAPI(brandName);
+
+      // Fallback to USPTO API
+      if (this.usptoApiKey) {
+        console.log('Marker API not configured, using USPTO API...');
+        return await this.searchUSPTOAPI(brandName);
+      }
+
+      throw new Error('No trademark API configured. Set MARKER_API_USERNAME and MARKER_API_PASSWORD or USPTO_API_KEY.');
     } catch (error) {
       console.error('Exact match search failed:', error);
       throw error; // NO SIMULATION - propagate real error
     }
+  }
+
+  /**
+   * Search Marker API for trademarks
+   * API Format: https://markerapi.com/api/v2/trademarks/trademark/{search_term}/status/{status}/start/{start}/username/{username}/password/{password}
+   * @param brandName The brand name to search
+   * @param status 'active' or 'all' - filter by trademark status
+   * @param maxPages Maximum number of pages to fetch (default 2, 100 results per page)
+   * @returns Array of trademark matches
+   */
+  private async searchMarkerAPI(
+    brandName: string,
+    status: 'active' | 'all' = 'all',
+    maxPages: number = 2
+  ): Promise<TrademarkMatch[]> {
+    try {
+      const allMatches: TrademarkMatch[] = [];
+      let currentStart = 0;
+      let pagesProcessed = 0;
+
+      // Fetch up to maxPages of results
+      while (pagesProcessed < maxPages) {
+        // Encode the search term for URL
+        const encodedTerm = encodeURIComponent(brandName);
+
+        // Build Marker API URL
+        const apiUrl = `https://markerapi.com/api/v2/trademarks/trademark/${encodedTerm}/status/${status}/start/${currentStart}/username/${this.markerApiUsername}/password/${this.markerApiPassword}`;
+
+        console.log(`Marker API: Searching for "${brandName}" (status: ${status}, start: ${currentStart})`);
+
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'BrandValidator/1.0'
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Marker API failed: ${response.status} - ${errorText}`);
+        }
+
+        const data: MarkerAPIResponse = await response.json();
+        console.log(`Marker API: Found ${data.count} trademark(s) on page ${pagesProcessed + 1} for "${brandName}"`);
+
+        // Parse and add matches from this page
+        const pageMatches = this.parseMarkerAPIResponse(data, brandName);
+        allMatches.push(...pageMatches);
+
+        pagesProcessed++;
+
+        // Check if there are more pages
+        if (data.next && pagesProcessed < maxPages) {
+          currentStart = data.next;
+        } else {
+          // No more pages or reached max pages
+          break;
+        }
+      }
+
+      console.log(`Marker API: Total of ${allMatches.length} trademark(s) found across ${pagesProcessed} page(s)`);
+      return allMatches;
+
+    } catch (error) {
+      console.error('Marker API search failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse Marker API response into TrademarkMatch format
+   */
+  private parseMarkerAPIResponse(data: MarkerAPIResponse, brandName: string): TrademarkMatch[] {
+    const matches: TrademarkMatch[] = [];
+
+    if (!data.trademarks || data.trademarks.length === 0) {
+      console.log('Marker API: No trademarks found');
+      return matches;
+    }
+
+    for (const tm of data.trademarks) {
+      // Parse class codes (comma-separated string to array of numbers)
+      const classes: number[] = [];
+      if (tm.class_codes) {
+        const classParts = tm.class_codes.split(',').map(c => c.trim());
+        for (const part of classParts) {
+          const classNum = parseInt(part);
+          if (!isNaN(classNum)) {
+            classes.push(classNum);
+          }
+        }
+      }
+
+      // Parse goods and services
+      const goodsAndServices: string[] = [];
+      if (tm.goods_services) {
+        goodsAndServices.push(tm.goods_services);
+      }
+      if (tm.description && tm.description !== tm.goods_services) {
+        goodsAndServices.push(tm.description);
+      }
+
+      // Calculate similarity score
+      const similarityScore = this.calculateSimilarity(brandName, tm.trademark);
+
+      // Determine risk level based on similarity and status
+      let riskLevel: 'low' | 'medium' | 'high' = this.calculateRiskLevel(similarityScore);
+
+      // Increase risk if trademark is active/registered
+      if (tm.status && (
+        tm.status.toLowerCase().includes('registered') ||
+        tm.status.toLowerCase().includes('active') ||
+        tm.status.toLowerCase().includes('live')
+      )) {
+        if (similarityScore >= 75) {
+          riskLevel = 'high';
+        } else if (similarityScore >= 50) {
+          riskLevel = 'medium';
+        }
+      }
+
+      const match: TrademarkMatch = {
+        mark: tm.trademark,
+        owner: tm.owner || 'Unknown',
+        status: tm.status || 'Unknown',
+        registrationNumber: tm.registration_number || tm.serial_number || undefined,
+        filingDate: tm.filing_date || tm.registration_date || undefined,
+        goodsAndServices,
+        classes,
+        similarityScore,
+        riskLevel,
+        notes: `Found via Marker API - ${tm.status || 'Status unknown'}`
+      };
+
+      matches.push(match);
+    }
+
+    // Sort by similarity score (highest first)
+    return matches.sort((a, b) => b.similarityScore - a.similarityScore);
   }
 
   private async searchUSPTOAPI(brandName: string): Promise<TrademarkMatch[]> {
@@ -670,26 +842,36 @@ export class TrademarkSearchService {
   private async searchSimilarMarks(brandName: string): Promise<TrademarkMatch[]> {
     const variations = this.generateVariations(brandName);
     const similarMarks: TrademarkMatch[] = [];
-    
-    // Search for each variation in the USPTO database
+
+    // Search for each variation
     for (const variation of variations.slice(0, 3)) { // Limit to first 3 variations to avoid too many API calls
       try {
-        const matches = await this.searchUSPTOAPI(variation);
+        let matches: TrademarkMatch[] = [];
+
+        // Use Marker API if configured
+        if (this.markerApiUsername && this.markerApiPassword) {
+          matches = await this.searchMarkerAPI(variation, 'all');
+        } else if (this.usptoApiKey) {
+          matches = await this.searchUSPTOAPI(variation);
+        }
+
         similarMarks.push(...matches);
       } catch (error) {
         console.error(`Error searching for variation "${variation}":`, error);
         // Continue with other variations
       }
     }
-    
-    // Also search for partial matches using wildcards
-    try {
-      const partialMatches = await this.searchPartialMatches(brandName);
-      similarMarks.push(...partialMatches);
-    } catch (error) {
-      console.error('Error searching for partial matches:', error);
+
+    // Also search for partial matches using wildcards (USPTO only - Marker doesn't support wildcards in this way)
+    if (this.usptoApiKey && !this.markerApiUsername) {
+      try {
+        const partialMatches = await this.searchPartialMatches(brandName);
+        similarMarks.push(...partialMatches);
+      } catch (error) {
+        console.error('Error searching for partial matches:', error);
+      }
     }
-    
+
     // Remove duplicates and sort by similarity score
     const uniqueMarks = this.removeDuplicateMarks(similarMarks);
     return uniqueMarks.sort((a, b) => b.similarityScore - a.similarityScore);

@@ -3,7 +3,12 @@ import { TrademarkSearchService } from '@/lib/services/trademarkSearch';
 
 export const dynamic = 'force-dynamic';
 
-const trademarkService = new TrademarkSearchService();
+// Initialize trademark service with API credentials from environment
+const trademarkService = new TrademarkSearchService(
+  process.env.USPTO_API_KEY,
+  process.env.MARKER_API_USERNAME,
+  process.env.MARKER_API_PASSWORD
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,5 +36,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
 
 
