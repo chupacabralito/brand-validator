@@ -1,7 +1,8 @@
 export const affiliate = {
   namecheap(domain: string, affiliateId: string) {
-    // Use static Impact affiliate link
-    return `https://namecheap.pxf.io/raYKqR`;
+    // Use static Impact affiliate link with domain parameter
+    // Impact will pass the domain through to Namecheap's search
+    return `https://namecheap.pxf.io/raYKqR?domain=${encodeURIComponent(domain)}`;
   },
 
   godaddy(domain: string, affiliateId: string) {
