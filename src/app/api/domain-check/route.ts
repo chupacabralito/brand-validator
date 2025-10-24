@@ -61,18 +61,82 @@ export async function POST(request: NextRequest) {
       request.headers.get('referer') || undefined
     );
 
-    // Check availability for all domains using real WHOIS API
+    // Check availability - for single domain, include alternatives
+    if (domainsToCheck.length === 1) {
+      const domainResult = await domainService.checkDomainAvailability(domainsToCheck[0], true, refresh);
+
+      // Convert to expected format
+      const finalResult = {
+        query: domainResult.domain,
+        root: domainResult.domain.split('.')[0],
+        tld: '.' + domainResult.domain.split('.').slice(1).join('.'),
+        available: domainResult.available,
+        status: domainResult.available ? 'available' as const : 'taken' as const,
+        alternates: (domainResult.alternatives || []).map(alt => ({
+          domain: alt.domain,
+          available: alt.available,
+          status: alt.available ? 'available' as const : 'taken' as const,
+          score: alt.score
+        })),
+        dnsHistoryFlag: domainResult.available ? undefined : 'unknown' as const,
+        registrar: domainResult.registrar,
+        registrationDate: domainResult.registrationDate,
+        expirationDate: domainResult.expirationDate,
+        pricing: domainResult.pricing,
+        lastChecked: domainResult.lastChecked,
+        cacheExpiry: domainResult.cacheExpiry,
+        fromCache: domainResult.fromCache
+      };
+
+      const responseTime = Date.now() - startTime;
+
+      // Track the search
+      await analytics.trackSearch(
+        sessionId,
+        domain,
+        'domain',
+        { domainResult: finalResult },
+        responseTime,
+        true
+      );
+
+      // Track analytics event
+      await analytics.trackEvent(
+        sessionId,
+        'search',
+        'domain_check',
+        { domain, available: finalResult.available },
+        request.headers.get('user-agent') || undefined,
+        request.headers.get('x-forwarded-for') || undefined,
+        request.headers.get('referer') || undefined,
+        '/api/domain-check'
+      );
+
+      const response = NextResponse.json(finalResult);
+
+      // Set session cookie
+      response.cookies.set('pg_aff_src', sessionId, {
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production'
+      });
+
+      return response;
+    }
+
+    // Check availability for multiple domains (name only without TLD)
     // Use Promise.allSettled to handle individual failures gracefully
     const results = await Promise.allSettled(
       domainsToCheck.map(async (domainToCheck) => {
         const domainResult = await domainService.checkDomainAvailability(domainToCheck, false, refresh); // Don't include alternatives for individual checks
 
-        // Convert to expected format
+        // Convert to expected format with new status field
         return {
           query: domainResult.domain,
           root: domainResult.domain.split('.')[0],
           tld: '.' + domainResult.domain.split('.').slice(1).join('.'),
           available: domainResult.available,
+          status: domainResult.available ? 'available' as const : 'taken' as const,
           alternates: [], // Will be populated later for the primary result
           dnsHistoryFlag: domainResult.available ? undefined : 'unknown' as const,
           registrar: domainResult.registrar,
@@ -120,7 +184,9 @@ export async function POST(request: NextRequest) {
         .map(r => ({
           domain: r.query,
           available: r.available,
-          score: r.tld === '.net' ? 95 : r.tld === '.org' ? 90 : r.tld === '.io' ? 85 : r.tld === '.co' ? 80 : 75
+          status: r.status,
+          score: r.tld === '.net' ? 95 : r.tld === '.org' ? 90 : r.tld === '.io' ? 85 : r.tld === '.co' ? 80 : 75,
+          pricing: r.pricing
         }))
         .sort((a, b) => b.score - a.score);
 

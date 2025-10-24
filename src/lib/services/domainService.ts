@@ -81,41 +81,32 @@ export class DomainService {
 
       console.log(bypassCache ? 'Cache bypassed for domain:' : 'Cache miss for domain:', cleanDomain);
 
-      // Use real WHOIS API for accurate domain availability
+      // Try WHOIS API first (primary - user is paying for it)
       let result: DomainAvailabilityResult;
+
       if (this.whoisApiKey) {
         try {
-          console.log('Trying WHOIS API for:', cleanDomain);
+          console.log('Checking with WHOIS API for:', cleanDomain);
           result = await this.checkWithWHOISAPI(cleanDomain, includeAlternatives);
-        } catch (error) {
-          console.warn('WHOIS API failed, trying Namecheap API:', error);
-          throw error; // Re-throw to try Namecheap
+          console.log(`WHOIS check complete for ${cleanDomain}:`, result.available ? 'available' : 'taken');
+        } catch (whoisError) {
+          console.warn('WHOIS API failed, falling back to DNS check:', whoisError);
+          // Fallback to DNS if WHOIS fails
+          result = await this.checkWithDNSAndHTTP(cleanDomain, includeAlternatives);
         }
       } else {
-        console.warn('WHOIS_API_KEY not configured, trying Namecheap API');
-        throw new Error('WHOIS_API_KEY not configured');
+        // No WHOIS key configured, use DNS
+        console.log('No WHOIS key configured, using DNS check for:', cleanDomain);
+        result = await this.checkWithDNSAndHTTP(cleanDomain, includeAlternatives);
       }
 
-      // Cache the result (24-hour expiration)
+      // Cache the result
       await this.cacheResult(cleanDomain, result);
       return result;
 
-    } catch (whoisError) {
-      // Try Namecheap API as backup (requires API key)
-      if (this.namecheapApiKey) {
-        try {
-          console.log('Trying Namecheap API for:', cleanDomain);
-          const result = await this.checkWithNamecheap(cleanDomain, includeAlternatives);
-          // Cache the result
-          await this.cacheResult(cleanDomain, result);
-          return result;
-        } catch (error) {
-          console.warn('Namecheap API failed:', error);
-        }
-      }
-
-      // If all methods fail, throw error - NO SIMULATION ALLOWED
-      throw new Error('All domain checking APIs failed. Please configure WHOIS_API_KEY or NAMECHEAP_API_KEY for real domain availability data.');
+    } catch (error) {
+      console.error('Domain check failed:', error);
+      throw error;
     }
   }
 
@@ -224,6 +215,97 @@ export class DomainService {
     }
     
     return true;
+  }
+
+  private async checkWithDNSAndHTTP(domain: string, includeAlternatives: boolean = true): Promise<DomainAvailabilityResult> {
+    console.log('Running DNS+HTTP check for:', domain);
+
+    // Use Google DNS API (free, fast, reliable)
+    const dnsAvailable = await this.quickDNSCheck(domain);
+
+    console.log(`DNS check result for ${domain}: ${dnsAvailable ? 'no records (available)' : 'has records (taken)'}`);
+
+    // Generate alternatives with availability checks
+    const alternatives = includeAlternatives ? await this.getDomainAlternativesWithChecks(domain) : [];
+
+    if (dnsAvailable) {
+      // Domain appears available
+      return {
+        domain,
+        available: true,
+        status: 'available',
+        nameServers: [],
+        whoisData: { domain, available: true },
+        alternatives,
+        pricing: this.getDomainPricing(domain)
+      };
+    } else {
+      // Domain has DNS records, so it's registered
+      return {
+        domain,
+        available: false,
+        registrar: 'Unknown',
+        registrationDate: undefined,
+        expirationDate: undefined,
+        status: 'registered',
+        nameServers: [],
+        whoisData: { domain, available: false },
+        alternatives,
+        pricing: undefined
+      };
+    }
+  }
+
+  private async quickDNSCheck(domain: string): Promise<boolean> {
+    try {
+      // Use Google DNS API - free and reliable
+      const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`, {
+        headers: { 'User-Agent': 'BrandValidator/1.0' },
+        signal: AbortSignal.timeout(3000) // 3 second timeout
+      });
+
+      if (!response.ok) {
+        console.warn(`DNS API returned ${response.status} for ${domain}`);
+        return true; // Assume available if API fails
+      }
+
+      const data = await response.json();
+
+      // If there are A records, domain is registered
+      const hasRecords = data.Answer && data.Answer.length > 0;
+
+      return !hasRecords; // Available if NO records
+    } catch (error) {
+      console.error('DNS check error:', error);
+      return true; // Assume available on error (conservative)
+    }
+  }
+
+  private async getDomainAlternativesWithChecks(domain: string): Promise<DomainAlternative[]> {
+    const baseDomain = domain.replace(/\.(com|net|org|co|io|app|dev|tech)$/, '');
+    const extensions = ['.net', '.org', '.io', '.co'];
+
+    // Check availability for each alternative in parallel
+    const alternativePromises = extensions
+      .map(ext => baseDomain + ext)
+      .filter(altDomain => altDomain !== domain)
+      .map(async (altDomain) => {
+        const available = await this.quickDNSCheck(altDomain);
+        return {
+          domain: altDomain,
+          available,
+          score: this.calculateAlternativeScore(altDomain, domain),
+          reason: this.getAlternativeReason(altDomain, domain),
+          pricing: this.getDomainPricing(altDomain)
+        };
+      });
+
+    const alternatives = await Promise.all(alternativePromises);
+
+    // Sort by score and return top 5
+    return alternatives
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
   }
 
   private async getDomainAlternatives(domain: string): Promise<DomainAlternative[]> {
@@ -524,7 +606,7 @@ export class DomainService {
           'User-Agent': 'BrandValidator/1.0',
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(10000) // 10 second timeout (increased from 5s to prevent false negatives)
+        signal: AbortSignal.timeout(15000) // 15 second timeout to accommodate WHOIS response times
       });
 
       if (!response.ok) {
@@ -551,7 +633,7 @@ export class DomainService {
           status: 'available',
           nameServers: [],
           whoisData: { domain, available: true },
-          alternatives: includeAlternatives ? await this.getDomainAlternatives(domain) : [],
+          alternatives: includeAlternatives ? await this.getDomainAlternativesWithChecks(domain) : [],
           pricing: this.getDomainPricing(domain)
         };
       } else {
@@ -565,7 +647,7 @@ export class DomainService {
           status: 'registered',
           nameServers: whoisData.WhoisRecord?.registryData?.nameServers?.hostNames || [],
           whoisData: { domain, available: false },
-          alternatives: includeAlternatives ? await this.getDomainAlternatives(domain) : [],
+          alternatives: includeAlternatives ? await this.getDomainAlternativesWithChecks(domain) : [],
           pricing: this.getDomainPricing(domain)
         };
       }

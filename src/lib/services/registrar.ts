@@ -72,7 +72,13 @@ export class RegistrarService {
         root,
         tld,
         available: isAvailable,
-        registrarPrices: registrarPrices.length > 0 ? registrarPrices : undefined,
+        status: isAvailable ? 'available' : 'taken',
+        pricing: isAvailable && registrarPrices.length > 0 ? {
+          registration: registrarPrices[0].priceUsd,
+          renewal: registrarPrices[0].priceUsd + 2,
+          currency: 'USD',
+          registrar: 'Namecheap'
+        } : undefined,
         alternates,
         dnsHistoryFlag: whoisResult.dnsHistoryFlag
       };
@@ -89,6 +95,7 @@ export class RegistrarService {
         root,
         tld,
         available: dnsResult.available,
+        status: dnsResult.available ? 'available' : 'taken',
         alternates,
         dnsHistoryFlag: 'unknown'
       };
