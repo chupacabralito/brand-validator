@@ -339,7 +339,6 @@ export default function Home() {
               <DomainRail
                 domainResult={domainResult}
                 isLoading={isLoading}
-                onAffiliateClick={handleAffiliateClick}
                 onRefresh={handleDomainRefresh}
               />
 
