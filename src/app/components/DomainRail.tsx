@@ -19,43 +19,22 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
     console.log('DomainRail received:', { domainResult, isLoading });
   }, [domainResult, isLoading]);
 
-  const handleAffiliateClick = (partner: string, offer: string, url: string) => {
-    console.log('Affiliate click:', { partner, offer, url });
+  const handleAffiliateClick = (partner: string, offer: string, domain: string) => {
+    console.log('Affiliate click:', { partner, offer, domain });
 
+    // For Namecheap, directly open the Impact affiliate link
+    if (partner === 'namecheap') {
+      const affiliateUrl = `https://namecheap.pxf.io/raYKqR?domain=${encodeURIComponent(domain)}`;
+      console.log('Opening affiliate URL:', affiliateUrl);
+      window.open(affiliateUrl, '_blank');
+      return;
+    }
+
+    // For other partners, use the API route if provided
     if (onAffiliateClick) {
-      onAffiliateClick(partner, offer, url);
+      onAffiliateClick(partner, offer, domain);
     } else {
-      // Fallback: direct API call
-      const requestBody = { partner, offer, url };
-      console.log('Sending request body:', requestBody);
-
-      fetch('/api/affiliate/click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      }).then(response => {
-        console.log('Response status:', response.status);
-        if (response.ok) {
-          return response.json();
-        }
-        return response.json().then(errorData => {
-          console.error('API Error:', errorData);
-          throw new Error(errorData.error || 'Failed to get affiliate link');
-        });
-      }).then(data => {
-        console.log('API Response:', data);
-        if (data.success && data.affiliateUrl) {
-          window.open(data.affiliateUrl, '_blank');
-        } else {
-          console.error('No affiliate URL returned:', data);
-        }
-      }).catch(error => {
-        console.error('Affiliate click error:', error);
-        // Fallback: try to construct a basic Namecheap URL
-        const fallbackUrl = `https://www.namecheap.com/domains/registration/results/?domain=${encodeURIComponent(url)}`;
-        console.log('Using fallback URL:', fallbackUrl);
-        window.open(fallbackUrl, '_blank');
-      });
+      console.warn('No affiliate handler configured for partner:', partner);
     }
   };
 
