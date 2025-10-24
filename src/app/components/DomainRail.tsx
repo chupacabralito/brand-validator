@@ -22,12 +22,11 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
   const handleAffiliateClick = (partner: string, offer: string, domain: string) => {
     console.log('Affiliate click:', { partner, offer, domain });
 
-    // For Namecheap, use Impact deep link with Namecheap's domain search URL
+    // For Namecheap, try using subpath format with Impact redirect
     if (partner === 'namecheap') {
-      // Use Impact's deep link format: base_url/destination_url
-      // Namecheap's domain search URL format
-      const namecheapSearchUrl = `https://www.namecheap.com/domains/registration/results/?domain=${encodeURIComponent(domain)}`;
-      const affiliateUrl = `https://namecheap.pxf.io/c/6617518/386170/5618?u=${encodeURIComponent(namecheapSearchUrl)}`;
+      // Try encoding the destination path in the Impact URL
+      // Format: https://namecheap.pxf.io/raYKqR/domains/registration/results/?domain=example.com
+      const affiliateUrl = `https://namecheap.pxf.io/raYKqR/domains/registration/results/?domain=${encodeURIComponent(domain)}`;
       console.log('Opening affiliate URL:', affiliateUrl);
       window.open(affiliateUrl, '_blank');
       return;
