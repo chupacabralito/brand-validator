@@ -35,18 +35,18 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search millions of domains and brand ideas instantly..."
-          className="w-full px-6 py-5 text-xl bg-gray-900 border-2 border-gray-700 text-white placeholder-gray-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
+          className="w-full px-6 py-5 pr-24 sm:pr-32 text-lg sm:text-xl bg-gray-900 border-2 border-gray-700 text-white placeholder-gray-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
         >
           {isLoading ? (
             <div className="flex items-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-              Searching...
+              <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white sm:mr-2"></div>
+              <span className="hidden sm:inline ml-2">Searching...</span>
             </div>
           ) : (
             'Search'
