@@ -50,7 +50,7 @@ export default function Home() {
     console.log('Social Result:', socialResult);
     console.log('Trademark Result:', trademarkResult);
     console.log('Brand Kit:', brandKit);
-    
+
     if (!domainResult && !socialResult && !trademarkResult && !brandKit) {
       console.log('No results available for composite score');
       setCompositeResult(null);
@@ -70,11 +70,11 @@ export default function Home() {
           selectedTrademarkCategory
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Composite score API response:', data);
       setCompositeResult(data);
@@ -82,22 +82,32 @@ export default function Home() {
     } catch (error) {
       console.error('Error calculating composite score:', error);
     }
-  }, [domainResult, socialResult, trademarkResult, brandKit]);
+  }, [domainResult, socialResult, trademarkResult, brandKit, selectedTrademarkCategory]);
 
-  // Calculate composite score when all individual results are available
+  // Calculate composite score ONLY when ALL critical results are available
   useEffect(() => {
-    if (domainResult || socialResult || trademarkResult || brandKit) {
-      console.log('Individual results available, calculating composite score...');
+    // Check if we have all the results we expect based on search type
+    const hasAllResults = domainResult && socialResult && trademarkResult && brandKit;
+
+    if (hasAllResults) {
+      console.log('All results available, calculating composite score...');
       console.log('Domain:', domainResult);
       console.log('Social:', socialResult);
       console.log('Trademark:', trademarkResult);
       console.log('Brand:', brandKit);
-      
+
+      // Small delay to ensure all state updates have settled
       const timer = setTimeout(() => {
         calculateCompositeScore();
-      }, 1000);
-      
+      }, 300);
+
       return () => clearTimeout(timer);
+    } else {
+      console.log('Waiting for all results before calculating composite score...');
+      console.log('Has domain:', !!domainResult);
+      console.log('Has social:', !!socialResult);
+      console.log('Has trademark:', !!trademarkResult);
+      console.log('Has brand:', !!brandKit);
     }
   }, [domainResult, socialResult, trademarkResult, brandKit, calculateCompositeScore]);
 
@@ -298,11 +308,10 @@ export default function Home() {
             </h1>
           </div>
           <h2 className="text-2xl font-semibold text-gray-200 mb-4">
-            The fastest domain validation tool on the internet
+            The most complete domain validation tool on the web
           </h2>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Check domain availability, generate brand kits, validate trademarks, and get IP guidance.
-            Our tool shows comprehensive results as you type, surfacing the best domain options at your fingertips.
+            Check domain availability, generate brand kits, validate trademarks, and get social handle availability.
           </p>
         </div>
 

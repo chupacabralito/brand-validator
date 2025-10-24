@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrandKit } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 
@@ -19,33 +19,9 @@ interface VoiceContent {
 export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searchTerm }: BrandKitRailProps) {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<string>('modern');
-  const [openLogoIndex, setOpenLogoIndex] = useState<number | null>(null);
   const [voiceCache, setVoiceCache] = useState<Record<string, VoiceContent>>({});
   const [generatingVoice, setGeneratingVoice] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const logoCreators = [
-    { name: 'LogoAI', partner: 'logoai', color: 'bg-purple-600 hover:bg-purple-700' },
-    { name: 'Zoviz', partner: 'zoviz', color: 'bg-blue-600 hover:bg-blue-700' },
-    { name: 'LogoMe', partner: 'logome', color: 'bg-green-600 hover:bg-green-700' }
-  ];
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenLogoIndex(null);
-      }
-    };
-
-    if (openLogoIndex !== null) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [openLogoIndex]);
+  const [showAllLogoConcepts, setShowAllLogoConcepts] = useState<boolean>(false);
 
   // Initialize cache with default modern content when brandKit loads
   useEffect(() => {
@@ -212,51 +188,17 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       scoreColor="blue"
       color="orange"
     >
-      {/* PRIMARY CTA - Logo Creation */}
-      <div className="mb-6 relative" ref={dropdownRef}>
-        <div className="flex">
-          <button
-            onClick={() => handleAffiliateClick('logoai', 'logo', selectedName || displayNames[0]?.value)}
-            className="flex-1 px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-l-lg hover:bg-blue-700 transition-colors"
-          >
-            Create Logo
-          </button>
-          <button
-            onClick={() => setOpenLogoIndex(openLogoIndex === 0 ? null : 0)}
-            className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-r-lg hover:bg-blue-700 transition-colors border-l border-blue-500/30 flex items-center justify-center"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Logo Creator Dropdown */}
-        {openLogoIndex === 0 && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-            <div className="p-2">
-              <div className="text-xs text-gray-400 mb-2 px-2">Choose Logo Creator</div>
-              {logoCreators.map((creator, creatorIndex) => (
-                <button
-                  key={creatorIndex}
-                  onClick={() => {
-                    handleAffiliateClick(creator.partner, 'logo', selectedName || displayNames[0]?.value);
-                    setOpenLogoIndex(null);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors flex items-center gap-3 rounded"
-                >
-                  <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold text-white ${creator.color.split(' ')[0]}`}>
-                    {creator.name.charAt(0)}
-                  </div>
-                  <span className="flex-1">{creator.name}</span>
-                  <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* PRIMARY CTA - Status-driven (always positive for brand kit) */}
+      <div className="mb-6">
+        <button
+          onClick={() => handleAffiliateClick('logoai', 'logo', selectedName || displayNames[0]?.value)}
+          className="w-full px-6 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+        >
+          Create Logo
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* Brand Voice - Filter Control */}
@@ -374,43 +316,37 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
             )}
           </div>
           <div className="space-y-2">
-            {displayLogoPrompts.slice(0, 2).map((prompt, index) => (
+            {(showAllLogoConcepts ? displayLogoPrompts : displayLogoPrompts.slice(0, 2)).map((prompt, index) => (
               <div key={index} className="text-xs text-gray-300 bg-gray-800/50 rounded p-2 border border-gray-700">
                 {prompt}
               </div>
             ))}
             {displayLogoPrompts.length > 2 && (
-              <div className="text-xs text-gray-500">
-                +{displayLogoPrompts.length - 2} more concepts
-              </div>
+              <button
+                onClick={() => setShowAllLogoConcepts(!showAllLogoConcepts)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {showAllLogoConcepts
+                  ? 'Show less'
+                  : `+${displayLogoPrompts.length - 2} more concepts`}
+              </button>
             )}
           </div>
         </div>
       )}
 
       {/* Secondary Actions */}
-      <div className="space-y-2 mt-6 pt-6 border-t border-gray-700">
-        {/* Domain Check */}
-        {selectedName && onCheckDomain && (
+      {selectedName && onCheckDomain && (
+        <div className="mt-6 pt-6 border-t border-gray-700">
+          {/* Domain Check */}
           <button
             onClick={() => onCheckDomain(`${selectedName.toLowerCase()}.com`)}
             className="w-full bg-gray-600 text-white py-2 px-3 rounded text-xs hover:bg-gray-700 transition-colors"
           >
             Check Domain: {selectedName.toLowerCase()}.com
           </button>
-        )}
-
-        {/* Copy Brand Kit */}
-        <button
-          onClick={() => {
-            const brandKitText = `Brand: ${selectedName || displayNames[0]?.value}\nTaglines: ${displayTaglines.slice(0, 3).join(', ')}\nVoice: ${selectedVoice}`;
-            navigator.clipboard.writeText(brandKitText);
-          }}
-          className="w-full bg-green-600 text-white py-2 px-3 rounded text-xs hover:bg-green-700 transition-colors"
-        >
-          Copy Brand Summary
-        </button>
-      </div>
+        </div>
+      )}
     </StandardContainer>
   );
 }

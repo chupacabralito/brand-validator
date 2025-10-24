@@ -216,27 +216,46 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
       scoreColor={availableCount >= totalCount * 0.7 ? 'green' : availableCount >= totalCount * 0.4 ? 'yellow' : 'red'}
       color="green"
     >
-      {/* PRIMARY CTA - Social Management */}
+      {/* PRIMARY CTA - Status-driven */}
       {onAffiliateClick && (
         <div className="mb-6">
-          <AffiliateCTA
-            primaryText="Get Social Media Tools"
-            partners={socialPartners}
-            onAffiliateClick={onAffiliateClick}
-            offer="social"
-            targetUrl={socialResult.baseHandle}
-            context="social_handles"
-            className="!mt-0 !pt-0 !border-t-0"
-          />
+          {availableCount >= totalCount * 0.4 ? (
+            <button
+              onClick={() => {
+                // Find first available platform to redirect to
+                const firstAvailable = socialResult.platforms.find(p => p.available);
+                if (firstAvailable) {
+                  const platformUrl = getPlatformUrl(firstAvailable.platform, socialResult.baseHandle);
+                  window.open(platformUrl, '_blank');
+                }
+              }}
+              className="w-full px-6 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+            >
+              Claim Handles
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                // Find first available platform to redirect to
+                const firstAvailable = socialResult.platforms.find(p => p.available);
+                if (firstAvailable) {
+                  const platformUrl = getPlatformUrl(firstAvailable.platform, socialResult.baseHandle);
+                  window.open(platformUrl, '_blank');
+                }
+              }}
+              className="w-full px-6 py-3 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
+            >
+              Claim Handles
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
-
-      {/* Disclaimer */}
-      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-        <p className="text-xs text-blue-300">
-          <span className="font-semibold">Estimated Availability:</span> Results are based on handle patterns and characteristics. Always verify directly on each platform before registering.
-        </p>
-      </div>
 
       {/* Simplified Platform List */}
       <div className="space-y-2">
@@ -246,7 +265,7 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
             className="p-3 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors"
           >
             {/* Main Row */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               {/* Platform Info */}
               <div className="flex items-center gap-3 flex-1">
                 <div className={`w-6 h-6 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
@@ -265,35 +284,14 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
               {/* Status Badge */}
               {platform.available ? (
                 <span className="px-2 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded text-xs font-medium">
-                  Likely Available
+                  Available
                 </span>
               ) : (
                 <span className="px-2 py-1 bg-red-600/20 text-red-400 border border-red-600/30 rounded text-xs font-medium">
-                  Likely Taken
+                  Taken
                 </span>
               )}
             </div>
-
-            {/* Confidence & Factors */}
-            {platform.confidence !== undefined && (
-              <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-400">Confidence:</span>
-                  <span className={`text-xs font-medium ${
-                    platform.confidence >= 70 ? 'text-green-400' :
-                    platform.confidence >= 40 ? 'text-yellow-400' :
-                    'text-gray-400'
-                  }`}>
-                    {platform.confidence}%
-                  </span>
-                </div>
-                {platform.factors && platform.factors.length > 0 && (
-                  <span className="text-xs text-gray-500">
-                    • {platform.factors[0]}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

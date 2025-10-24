@@ -254,18 +254,40 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
       color="purple"
     >
 
-      {/* PRIMARY CTA - Trademark Filing */}
+      {/* PRIMARY CTA - Status-driven */}
       {onAffiliateClick && (
         <div className="mb-6">
-          <AffiliateCTA
-            primaryText="File Trademark"
-            partners={trademarkPartners}
-            onAffiliateClick={onAffiliateClick}
-            offer="trademark"
-            targetUrl={result.exactMatches[0]?.mark || result.similarMatches[0]?.mark || 'brand'}
-            context="trademark_check"
-            className="!mt-0 !pt-0 !border-t-0"
-          />
+          {riskLevel === 'low' ? (
+            <button
+              onClick={() => onAffiliateClick(trademarkPartners[0].partner, 'trademark', result.exactMatches[0]?.mark || result.similarMatches[0]?.mark || 'brand')}
+              className="w-full px-6 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+            >
+              File Trademark
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ) : riskLevel === 'medium' ? (
+            <button
+              onClick={() => onAffiliateClick(trademarkPartners[0].partner, 'trademark', result.exactMatches[0]?.mark || result.similarMatches[0]?.mark || 'brand')}
+              className="w-full px-6 py-3 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
+            >
+              File Trademark
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={() => onAffiliateClick(trademarkPartners[0].partner, 'attorney', result.exactMatches[0]?.mark || result.similarMatches[0]?.mark || 'brand')}
+              className="w-full px-6 py-3 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+            >
+              Consult Attorney
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 
@@ -372,21 +394,6 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
           </p>
         </div>
       )}
-
-      {/* USPTO Verification Link */}
-      <div className="mt-4 pt-3 border-t border-gray-700">
-        <a
-          href="https://www.uspto.gov/trademarks/search"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          Verify on USPTO.gov
-        </a>
-      </div>
     </StandardContainer>
   );
 }
