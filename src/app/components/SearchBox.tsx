@@ -34,7 +34,7 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search millions of domains and brand ideas instantly..."
+          placeholder="Enter domain here"
           className="w-full px-6 py-5 pr-24 sm:pr-32 text-lg sm:text-xl bg-gray-900 border-2 border-gray-700 text-white placeholder-gray-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
           disabled={isLoading}
         />
