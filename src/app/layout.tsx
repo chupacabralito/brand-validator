@@ -23,6 +23,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Preconnect to external API domains for faster DNS resolution and connection */}
+        <link rel="preconnect" href="https://zylalabs.com" />
+        <link rel="dns-prefetch" href="https://zylalabs.com" />
+        <link rel="preconnect" href="https://www.whoisxmlapi.com" />
+        <link rel="dns-prefetch" href="https://www.whoisxmlapi.com" />
+      </head>
       <body className={inter.className}>{children}</body>
     </html>
   )

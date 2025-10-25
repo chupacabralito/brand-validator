@@ -2,15 +2,38 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import SearchBox from '@/app/components/SearchBox';
-import DomainRail from '@/app/components/DomainRail';
-import BrandKitRail from '@/app/components/BrandKitRail';
-import SocialHandlesRail from '@/app/components/SocialHandlesRail';
-import TrademarkSearchResults from '@/app/components/TrademarkSearchResults';
-import CompositeScoreBar from '@/app/components/CompositeScoreBar';
 import { DomainResult, BrandKit, SocialCheckResult } from '@/lib/models/DomainResult';
 import { TrademarkSearchResult } from '@/lib/services/trademarkSearch';
 import { CompositeScoreResult } from '@/lib/services/compositeScore';
+
+// Lazy load result components - only loaded when search results are available
+// This reduces initial bundle size and improves time-to-interactive
+const DomainRail = dynamic(() => import('@/app/components/DomainRail'), {
+  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
+  ssr: false
+});
+
+const BrandKitRail = dynamic(() => import('@/app/components/BrandKitRail'), {
+  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
+  ssr: false
+});
+
+const SocialHandlesRail = dynamic(() => import('@/app/components/SocialHandlesRail'), {
+  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
+  ssr: false
+});
+
+const TrademarkSearchResults = dynamic(() => import('@/app/components/TrademarkSearchResults'), {
+  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
+  ssr: false
+});
+
+const CompositeScoreBar = dynamic(() => import('@/app/components/CompositeScoreBar'), {
+  loading: () => <div className="bg-gray-800 rounded-lg p-4 mb-8 animate-pulse h-24"></div>,
+  ssr: false
+});
 
 export default function Home() {
   const [query, setQuery] = useState('');
