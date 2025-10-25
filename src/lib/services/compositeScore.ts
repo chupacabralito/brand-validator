@@ -17,7 +17,9 @@ export interface CompositeScoreInput {
     similarMatches: any[];
   };
   brandKit?: {
-    nameVariants: Array<{ value: string; score: number }>;
+    brandName: string;
+    nameVariants?: Array<{ value: string; score: number }>; // Legacy field
+    tones?: any; // New structure
   };
   selectedTrademarkCategory?: string;
 }
@@ -278,39 +280,76 @@ export class CompositeScoreService {
   }
 
   private calculateBrandScore(brandKit?: CompositeScoreInput['brandKit']) {
-    if (!brandKit || !brandKit.nameVariants.length) {
+    if (!brandKit) {
       return { score: 50, factors: ['No brand data available'] };
     }
 
-    // Use the highest scoring name variant
-    const bestVariant = brandKit.nameVariants.reduce((best, current) => 
-      current.score > best.score ? current : best
-    );
-
-    let score = bestVariant.score;
+    // Handle new BrandKit structure (with tones) vs old structure (with nameVariants)
+    let brandName: string;
+    let score = 75; // Default base score
     const factors: string[] = [];
+
+    if (brandKit.nameVariants && brandKit.nameVariants.length > 0) {
+      // Legacy structure with nameVariants
+      const bestVariant = brandKit.nameVariants.reduce((best, current) =>
+        current.score > best.score ? current : best
+      );
+      brandName = bestVariant.value;
+      score = bestVariant.score;
+    } else if (brandKit.brandName) {
+      // New structure with brandName and tones
+      brandName = brandKit.brandName;
+
+      // Calculate score based on brand name characteristics
+      // Length scoring (30 points max)
+      const length = brandName.length;
+      if (length <= 6) {
+        score = 95;
+        factors.push('Very short, highly memorable name');
+      } else if (length <= 8) {
+        score = 85;
+        factors.push('Short, memorable name');
+      } else if (length <= 12) {
+        score = 75;
+        factors.push('Good name length');
+      } else {
+        score = 60;
+        factors.push('Longer name - consider shorter alternatives');
+      }
+
+      // Character quality bonus (5 points)
+      if (!/[^a-zA-Z]/.test(brandName)) {
+        score += 5;
+        factors.push('Clean, professional name');
+      }
+
+      // Pronounceability check (5 points)
+      const vowelRatio = (brandName.match(/[aeiou]/gi) || []).length / brandName.length;
+      if (vowelRatio >= 0.3 && vowelRatio <= 0.6) {
+        score += 5;
+        factors.push('Easy to pronounce');
+      }
+    } else {
+      return { score: 50, factors: ['Invalid brand data structure'] };
+    }
 
     // Name quality factors
     if (score >= 90) {
-      factors.push('Excellent brand name quality');
+      if (!factors.some(f => f.includes('quality'))) {
+        factors.push('Excellent brand name quality');
+      }
     } else if (score >= 80) {
-      factors.push('Good brand name quality');
+      if (!factors.some(f => f.includes('quality'))) {
+        factors.push('Good brand name quality');
+      }
     } else if (score >= 70) {
-      factors.push('Fair brand name quality');
+      if (!factors.some(f => f.includes('quality'))) {
+        factors.push('Fair brand name quality');
+      }
     } else {
-      factors.push('Poor brand name quality');
-    }
-
-    // Length bonus
-    if (bestVariant.value.length <= 8) {
-      score += 5;
-      factors.push('Short, memorable name');
-    }
-
-    // Character quality
-    if (!/[^a-zA-Z]/.test(bestVariant.value)) {
-      score += 5;
-      factors.push('Clean, professional name');
+      if (!factors.some(f => f.includes('quality'))) {
+        factors.push('Poor brand name quality');
+      }
     }
 
     return { score: Math.max(0, Math.min(100, score)), factors };
