@@ -527,53 +527,76 @@ export class TrademarkSearchService {
 
   private async searchUSPTOAPI(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      // Try USPTO's new API first
+      // Try USPTO's new API first with 5-second timeout
       const apiUrl = 'https://developer.uspto.gov/ibd-api/v1/trademark/search';
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'BrandValidator/1.0'
-        },
-        body: JSON.stringify({
-          searchText: brandName,
-          start: 0,
-          rows: 20
-        })
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        const matches = this.parseUSPTOAPIResponse(data, brandName);
-        console.log(`USPTO API search for "${brandName}" found ${matches.length} matches`);
-        return matches;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'BrandValidator/1.0'
+          },
+          body: JSON.stringify({
+            searchText: brandName,
+            start: 0,
+            rows: 20
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        if (response.ok) {
+          const data = await response.json();
+          const matches = this.parseUSPTOAPIResponse(data, brandName);
+          console.log(`USPTO API search for "${brandName}" found ${matches.length} matches`);
+          return matches;
+        }
+      } catch (fetchError) {
+        clearTimeout(timeout);
+        console.log('USPTO API failed or timed out:', fetchError);
       }
-      
-      // Fallback to TESS web interface
+
+      // Fallback to TESS web interface with 5-second timeout
       console.log('USPTO API failed, trying TESS web interface...');
       const tessUrl = `https://tmsearch.uspto.gov/bin/gate.exe?f=tess&state=4803:${encodeURIComponent(brandName)}`;
-      
-      const tessResponse = await fetch(tessUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
 
-      if (!tessResponse.ok) {
-        throw new Error(`USPTO TESS search failed: ${tessResponse.status}`);
+      const tessController = new AbortController();
+      const tessTimeout = setTimeout(() => tessController.abort(), 5000); // 5 second timeout
+
+      try {
+        const tessResponse = await fetch(tessUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          },
+          signal: tessController.signal
+        });
+
+        clearTimeout(tessTimeout);
+
+        if (!tessResponse.ok) {
+          throw new Error(`USPTO TESS search failed: ${tessResponse.status}`);
+        }
+
+        const html = await tessResponse.text();
+        const matches = this.parseUSPTOResponse(html, brandName);
+
+        console.log(`USPTO TESS search for "${brandName}" found ${matches.length} matches`);
+        return matches;
+      } catch (tessError) {
+        clearTimeout(tessTimeout);
+        console.log('USPTO TESS failed or timed out:', tessError);
+        throw tessError;
       }
 
-      const html = await tessResponse.text();
-      const matches = this.parseUSPTOResponse(html, brandName);
-      
-      console.log(`USPTO TESS search for "${brandName}" found ${matches.length} matches`);
-      return matches;
-      
     } catch (error) {
       console.error('USPTO search failed:', error);
-      
+
       // Fallback to alternative trademark search
       console.log('Trying alternative trademark search...');
       return await this.searchAlternativeTrademarkAPI(brandName);
@@ -1084,26 +1107,37 @@ export class TrademarkSearchService {
 
   private async searchPartialMatches(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      // Search for partial matches using wildcards
+      // Search for partial matches using wildcards with 5-second timeout
       const searchUrl = `https://tmsearch.uspto.gov/bin/gate.exe?f=tess&state=4803:${encodeURIComponent(brandName.substring(0, 3))}*`;
-      
-      const response = await fetch(searchUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
 
-      if (!response.ok) {
-        throw new Error(`Partial match search failed: ${response.status}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      try {
+        const response = await fetch(searchUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          throw new Error(`Partial match search failed: ${response.status}`);
+        }
+
+        const html = await response.text();
+        const matches = this.parseUSPTOResponse(html, brandName);
+
+        // Filter for similar marks (similarity score > 30)
+        return matches.filter(match => match.similarityScore > 30);
+      } catch (fetchError) {
+        clearTimeout(timeout);
+        throw fetchError;
       }
 
-      const html = await response.text();
-      const matches = this.parseUSPTOResponse(html, brandName);
-      
-      // Filter for similar marks (similarity score > 30)
-      return matches.filter(match => match.similarityScore > 30);
-      
     } catch (error) {
       console.error('Partial match search failed:', error);
       return [];
