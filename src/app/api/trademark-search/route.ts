@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 // Initialize trademark service with API credentials from environment
 const trademarkService = new TrademarkSearchService(
   process.env.USPTO_API_KEY,
+  process.env.ZYLA_TRADEMARK_API_KEY,
   process.env.MARKER_API_USERNAME,
   process.env.MARKER_API_PASSWORD
 );
