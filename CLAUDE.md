@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Brand Validator is a Next.js 14 application that provides comprehensive brand validation services including domain availability checking, AI-powered brand kit generation, trademark searching, social handle validation, and IP guidance. The app uses a three-rail layout to present domain, brand, and IP information simultaneously.
 
+## Deployment
+
+**Production URL**: https://www.domainhunk.com (HTTP automatically redirects to HTTPS with www)
+
+The application is deployed to Vercel and served via the custom domain domainhunk.com. When testing production APIs or deployment, always use this URL with HTTPS and www subdomain.
+
+- **GitHub Repository**: https://github.com/chupacabralito/brand-validator
+- **Deployment**: Automatic deployment via Vercel on push to `main` branch
+- **Environment Variables**: Configured in Vercel dashboard under project settings
+
 ## Development Commands
 
 ```bash
