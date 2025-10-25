@@ -223,16 +223,16 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
     );
   }
 
-  if (!result) {
+  if (!result || !result.riskAssessment) {
     return null;
   }
 
   // Debug logging
   console.log('TrademarkSearchResults Debug:', {
-    overallRisk: result.riskAssessment.overallRisk,
-    exactMatches: result.exactMatches.length,
-    similarMatches: result.similarMatches.length,
-    riskFactors: result.riskAssessment.riskFactors
+    overallRisk: result.riskAssessment?.overallRisk,
+    exactMatches: result.exactMatches?.length || 0,
+    similarMatches: result.similarMatches?.length || 0,
+    riskFactors: result.riskAssessment?.riskFactors?.length || 0
   });
 
   const trademarkIcon = (

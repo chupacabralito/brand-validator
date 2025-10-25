@@ -112,10 +112,14 @@ NAMECHEAP_API_USER=...
 NAMECHEAP_USERNAME=...
 NAMECHEAP_CLIENT_IP=...
 
-# Trademark Search (recommended - free tier: 1,000 searches/month)
-MARKER_API_USERNAME=...    # Marker API username (https://markerapi.com)
-MARKER_API_PASSWORD=...    # Marker API password
-USPTO_API_KEY=...          # USPTO API key (fallback if Marker not configured)
+# Trademark Search (uses Zyla API - same key as social media)
+ZYLA_API_KEY=...           # Zyla API key (https://zylalabs.com) - PRIMARY
+MARKER_API_USERNAME=...    # Marker API username (fallback - currently unreliable)
+MARKER_API_PASSWORD=...    # Marker API password (fallback)
+USPTO_API_KEY=...          # USPTO API key (secondary fallback)
+
+# Social Handle Verification (recommended - $24.99/month for 2,000 requests)
+ZYLA_API_KEY=...           # Zyla API key (https://zylalabs.com)
 
 # Database
 DATABASE_URL=file:./brand-validator.db
@@ -176,22 +180,32 @@ Brand kits are generated with template-based fallbacks for structural elements (
 
 ### Trademark Search Strategy
 
-Trademark searches use a tiered approach with Marker API as primary source:
+Trademark searches use a tiered approach with Zyla API as primary source:
 
-1. **Marker API** (primary - recommended): Professional trademark search API with 1,000 free searches/month
-   - REST API returning JSON with trademark data from USPTO database
-   - Supports status filtering (active/all), pagination (100 results per page)
-   - Returns serial numbers, registration numbers, owners, status, classes, goods/services
+1. **Zyla Trademark Search API** (primary - RECOMMENDED): Professional, reliable trademark search
+   - Part of Zyla API Hub (same key as social media verification)
+   - Official USPTO database source
+   - REST API with Bearer token authentication
+   - 3 specialized endpoints: Search, Availability Check, Comprehensive Search
+   - Returns trademark name, owner, status, classes, goods/services, registration details
    - Automatic similarity scoring and risk assessment
-   - URL format: `https://markerapi.com/api/v2/trademarks/trademark/{term}/status/{status}/start/{start}/username/{user}/password/{pass}`
+   - Pricing: $24.99/mo (500 requests), $49.99/mo (5,000 requests), $99.99/mo (50,000 requests)
+   - 7-day free trial (50 API calls)
+   - Rate limits: 60-120 requests/minute
+   - URL: `https://zylalabs.com/api/1495/trademark+search+api/1238/trademark+search`
+   - Method: POST with JSON body `{ keyword: "brandname" }`
 
-2. **USPTO API** (fallback): Official USPTO TSDR API
-   - Used if Marker API not configured
+2. **Marker API** (secondary fallback - currently unreliable):
+   - Free tier but experiencing 302 redirect issues
+   - May be deprecated or migrating services
+   - Only used if Zyla API fails
+
+3. **USPTO API** (tertiary fallback): Official USPTO TSDR API
    - Free but may have reliability issues
    - Requires USPTO_API_KEY
 
-3. **Rule-based assessment** (last resort): Identifies known high-risk brands
-   - Only used if both APIs fail
+4. **Rule-based assessment** (last resort): Identifies known high-risk brands
+   - Only used if all APIs fail
    - Checks against database of major tech brands and common trademark terms
    - Returns low risk for unique names, high risk for known brands
 
@@ -200,6 +214,43 @@ The service automatically calculates:
 - Risk levels (high/medium/low) based on similarity and trademark status
 - Trademark class overlaps
 - Brand name variations and phonetic matches
+
+### Social Handle Checking Strategy
+
+Social media handle availability uses a hybrid approach combining Zyla API verification with heuristics-based estimation:
+
+1. **Zyla API** (primary - recommended): Real-time verification for priority platforms
+   - Platforms: Instagram, TikTok, Facebook
+   - REST API with Bearer token authentication
+   - Returns: `{is_available: boolean, url: string}`
+   - Confidence: 95% (verified by API)
+   - API: Social Media Handle Insight API (ID: 7506)
+   - URL format: `https://zylalabs.com/api/7506/social+media+handle+insight+api/{endpoint_id}/{platform}+username+validator?handle={handle}`
+   - Endpoint IDs: Instagram (12091), TikTok (12079), Facebook (12086)
+   - Pricing: $24.99/month (2,000 requests) to $199.99/month (50,000 requests)
+
+2. **Heuristics-based estimation** (secondary): For platforms not covered by Zyla API
+   - Platforms: Twitter, YouTube, LinkedIn, Snapchat, Pinterest, Discord
+   - 15+ rule system analyzing handle characteristics:
+     - Length analysis (30% weight)
+     - Dictionary words (20%)
+     - Name patterns (15%)
+     - Brand names (15%)
+     - Reserved words (10%)
+     - Sequential patterns, entropy, pronounceability, platform competitiveness
+   - Confidence: Variable (typically 60-85%)
+   - Implemented in `socialHeuristics.ts`
+
+3. **Fallback behavior**: If Zyla API fails for any reason
+   - Automatically falls back to heuristics for affected platforms
+   - Logs error for debugging
+   - Maintains service availability even if API is down
+
+The service provides:
+- Parallel API calls to minimize latency
+- Proper handle formatting per platform (@username for Instagram/TikTok/Twitter)
+- Platform URLs for manual verification
+- Clear distinction between verified (95% confidence) and estimated results
 
 ### Composite Scoring Algorithm
 

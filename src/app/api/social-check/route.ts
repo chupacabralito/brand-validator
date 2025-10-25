@@ -3,7 +3,8 @@ import { SocialService } from '@/lib/services/social';
 
 export const dynamic = 'force-dynamic';
 
-const socialService = new SocialService();
+// Initialize social service with Zyla API key from environment
+const socialService = new SocialService(process.env.ZYLA_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
