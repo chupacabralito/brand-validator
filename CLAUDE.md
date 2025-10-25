@@ -13,8 +13,35 @@ Brand Validator is a Next.js 14 application that provides comprehensive brand va
 The application is deployed to Vercel and served via the custom domain domainhunk.com. When testing production APIs or deployment, always use this URL with HTTPS and www subdomain.
 
 - **GitHub Repository**: https://github.com/chupacabralito/brand-validator
-- **Deployment**: Automatic deployment via Vercel on push to `main` branch
+- **Deployment Method**: Automatic deployment via Vercel on push to `main` branch (PRIMARY METHOD)
 - **Environment Variables**: Configured in Vercel dashboard under project settings
+
+### Deploying Changes to Production
+
+**ALWAYS use git push for deployment** - this is the automatic and recommended method:
+
+```bash
+# 1. Build and test locally
+npm run build
+
+# 2. Stage your changes
+git add <files>
+
+# 3. Commit with descriptive message
+git commit -m "Your commit message"
+
+# 4. Push to GitHub (triggers automatic Vercel deployment)
+git push origin main
+```
+
+Vercel will automatically:
+- Detect the push to `main` branch
+- Build the application
+- Run any configured build checks
+- Deploy to production at https://www.domainhunk.com
+- Update environment variables from Vercel dashboard
+
+**Do NOT use** `vercel deploy` or `npx vercel --prod` directly unless Vercel CLI is properly authenticated. Git push is the preferred and automatic deployment method.
 
 ## Development Commands
 
