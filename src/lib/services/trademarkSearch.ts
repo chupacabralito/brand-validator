@@ -276,10 +276,11 @@ export class TrademarkSearchService {
    */
   private async searchZylaAPI(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      // Zyla Trademark Search API - GET endpoint with BOTH required parameters
-      const apiUrl = `https://zylalabs.com/api/1495/trademark+search+api/1238/trademark+search?keyword=${encodeURIComponent(brandName)}&searchType=all`;
+      // Zyla Trademark Search API - GET endpoint with limit for faster responses
+      // Limit to 20 results instead of 250 - reduces response size and parsing time by ~90%
+      const apiUrl = `https://zylalabs.com/api/1495/trademark+search+api/1238/trademark+search?keyword=${encodeURIComponent(brandName)}&searchType=all&limit=20`;
 
-      console.log(`Zyla API: Searching for "${brandName}" (searchType: all)`);
+      console.log(`Zyla API: Searching for "${brandName}" (searchType: all, limit: 20)`);
 
       const response = await fetch(apiUrl, {
         method: 'GET',
