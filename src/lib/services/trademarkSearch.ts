@@ -244,16 +244,8 @@ export class TrademarkSearchService {
         }
       }
 
-      // Try Marker API as secondary option
-      if (this.markerApiUsername && this.markerApiPassword) {
-        console.log('Using Marker API for trademark search...');
-        try {
-          return await this.searchMarkerAPI(brandName, 'all');
-        } catch (markerError) {
-          console.error('Marker API failed, falling back to alternative search:', markerError);
-          // Fall through to next option
-        }
-      }
+      // DISABLED: Marker API is broken (connection reset errors) - skip entirely
+      // Saves 3-5 seconds per request by not waiting for timeout
 
       // Fallback to USPTO API
       if (this.usptoApiKey) {
@@ -1095,23 +1087,9 @@ export class TrademarkSearchService {
     const similarMarks: TrademarkMatch[] = [];
 
     // Search for each variation
-    for (const variation of variations.slice(0, 3)) { // Limit to first 3 variations to avoid too many API calls
-      try {
-        let matches: TrademarkMatch[] = [];
-
-        // Use Marker API if configured
-        if (this.markerApiUsername && this.markerApiPassword) {
-          matches = await this.searchMarkerAPI(variation, 'all');
-        } else if (this.usptoApiKey) {
-          matches = await this.searchUSPTOAPI(variation);
-        }
-
-        similarMarks.push(...matches);
-      } catch (error) {
-        console.error(`Error searching for variation "${variation}":`, error);
-        // Continue with other variations
-      }
-    }
+    // DISABLED: Variation search to improve performance - saves 5-10 seconds per request
+    // Marker API is broken, and variation searches have low value/cost ratio
+    // Users can run detailed searches on USPTO.gov if needed
 
     // Also search for partial matches using wildcards (USPTO only - Marker doesn't support wildcards in this way)
     if (this.usptoApiKey && !this.markerApiUsername) {

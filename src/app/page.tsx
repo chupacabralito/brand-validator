@@ -188,12 +188,15 @@ export default function Home() {
 
       if (isDomain || isPotentialDomain) {
         console.log('Domain search detected for:', searchQuery);
-        // Domain search flow
-        const [domainResponse, brandResponse] = await Promise.all([
+        const domainRoot = searchQuery.split('.')[0];
+
+        // Run ALL APIs in parallel for maximum speed
+        const [domainResponse, brandResponse, trademarkResponse, socialResponse] = await Promise.all([
           fetch('/api/domain-check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain: searchQuery })
+            body: JSON.stringify({ domain: searchQuery }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
           }),
           fetch('/api/brand-kit', {
             method: 'POST',
@@ -203,81 +206,93 @@ export default function Home() {
               tone: 'modern',
               audience: 'tech professionals',
               domain: searchQuery
-            })
+            }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
+          }),
+          fetch('/api/trademark-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brandName: domainRoot }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
+          }),
+          fetch('/api/social-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ handleBase: domainRoot }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
           })
         ]);
 
-        const domainData = await domainResponse.json();
-        const brandData = await brandResponse.json();
+        // Parse all responses in parallel
+        const [domainData, brandData, trademarkData, socialData] = await Promise.all([
+          domainResponse.json(),
+          brandResponse.json(),
+          trademarkResponse.json(),
+          socialResponse.json()
+        ]);
 
         console.log('Domain API response:', domainData);
         console.log('Brand API response:', brandData);
+        console.log('Trademark API response:', trademarkData);
+        console.log('Social API response:', socialData);
 
         setDomainResult(domainData);
         setBrandKit(brandData);
-
-        // Generate trademark search for the domain root
-        const domainRoot = searchQuery.split('.')[0];
-        const trademarkResponse = await fetch('/api/trademark-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brandName: domainRoot })
-        });
-        const trademarkData = await trademarkResponse.json();
         setTrademarkResult(trademarkData);
-
-        // Check social handles
-        const socialResponse = await fetch('/api/social-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handleBase: domainRoot })
-        });
-        const socialData = await socialResponse.json();
         setSocialResult(socialData);
 
         // Composite score will be calculated automatically via useEffect
 
       } else {
-        // Idea search flow
-        const brandResponse = await fetch('/api/brand-kit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idea: searchQuery,
-            tone: 'modern',
-            audience: 'general audience'
-          })
-        });
+        // Idea search flow - run all APIs in parallel
+        const handleBase = searchQuery.toLowerCase().replace(/\s/g, '');
 
-        const brandData = await brandResponse.json();
+        const [brandResponse, socialResponse, trademarkResponse] = await Promise.all([
+          fetch('/api/brand-kit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              idea: searchQuery,
+              tone: 'modern',
+              audience: 'general audience'
+            }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
+          }),
+          fetch('/api/social-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ handleBase }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
+          }),
+          fetch('/api/trademark-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              brandName: searchQuery,
+              classes: [35, 42], // Default business classes for ideas
+              includeInternational: false
+            }),
+            signal: AbortSignal.timeout(10000) // 10s timeout
+          })
+        ]);
+
+        // Parse all responses in parallel
+        const [brandData, socialData, trademarkData] = await Promise.all([
+          brandResponse.json(),
+          socialResponse.json(),
+          trademarkResponse.json()
+        ]);
+
+        console.log('Brand API response:', brandData);
+        console.log('Social API response:', socialData);
+        console.log('Trademark API response:', trademarkData);
+
         setBrandKit(brandData);
+        setSocialResult(socialData);
+        setTrademarkResult(trademarkData);
 
         // For idea searches, don't automatically check domain availability
-        // Let the user choose which generated name to check
         setDomainResult(null);
-
-
-        // Check social handles
-        const socialResponse = await fetch('/api/social-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handleBase: searchQuery.toLowerCase().replace(/\s/g, '') })
-        });
-        const socialData = await socialResponse.json();
-        setSocialResult(socialData);
-
-        // Run trademark search for the idea
-        const trademarkResponse = await fetch('/api/trademark-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            brandName: searchQuery,
-            classes: [35, 42], // Default business classes for ideas
-            includeInternational: false
-          })
-        });
-        const trademarkData = await trademarkResponse.json();
-        setTrademarkResult(trademarkData);
 
         // Composite score will be calculated automatically via useEffect
       }
