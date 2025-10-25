@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { DomainResult } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 
@@ -12,8 +12,6 @@ interface DomainRailProps {
 }
 
 export default function DomainRail({ domainResult, isLoading, onAffiliateClick, onRefresh }: DomainRailProps) {
-  const [showWhoisModal, setShowWhoisModal] = useState(false);
-
   // Debug logging
   useEffect(() => {
     console.log('DomainRail received:', { domainResult, isLoading });
@@ -44,12 +42,6 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
     } else {
       console.warn('No affiliate handler configured for partner:', partner);
     }
-  };
-
-  const handleMakeOffer = (domain: string) => {
-    // Link to Namecheap broker service
-    const brokerUrl = `https://www.namecheap.com/domains/marketplace/buy-domains/?aff=${process.env.NEXT_PUBLIC_NAMECHEAP_AFFILIATE_ID || ''}&domain=${encodeURIComponent(domain)}`;
-    window.open(brokerUrl, '_blank');
   };
 
   const domainIcon = (
@@ -121,24 +113,16 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
                 </svg>
               </button>
             ) : (
-              // Taken: "Lookup" + "Make Offer"
-              <>
-                <button
-                  onClick={() => handleMakeOffer(domainResult.query)}
-                  className="flex-1 px-6 py-3 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  Make Offer
-                </button>
-                <button
-                  onClick={() => setShowWhoisModal(true)}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  Lookup
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-              </>
+              // Taken: Single "Make Offer" button
+              <button
+                onClick={() => handleAffiliateClick('namecheap', 'domain', domainResult.query)}
+                className="flex-1 px-6 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              >
+                Make Offer
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             )}
           </div>
 
@@ -215,24 +199,15 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
                       </span>
 
                       {/* Dynamic CTA based on status */}
-                      {altStatus === 'available' ? (
-                        <button
-                          onClick={() => handleAffiliateClick('namecheap', 'domain', alt.domain)}
-                          className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors flex items-center gap-1 whitespace-nowrap"
-                        >
-                          Continue
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setShowWhoisModal(true)}
-                          className="px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors flex items-center gap-1 whitespace-nowrap"
-                        >
-                          Lookup
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleAffiliateClick('namecheap', 'domain', alt.domain)}
+                        className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors flex items-center gap-1 whitespace-nowrap"
+                      >
+                        {altStatus === 'available' ? 'Continue' : 'Make Offer'}
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );
@@ -241,67 +216,6 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
           </div>
         )}
       </StandardContainer>
-
-      {/* WHOIS Modal */}
-      {showWhoisModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowWhoisModal(false)}>
-          <div className="bg-gray-800 rounded-lg max-w-2xl w-full p-6 border border-gray-700" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white">Domain Lookup: {domainResult.query}</h2>
-              <button
-                onClick={() => setShowWhoisModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4 text-sm">
-              {domainResult.registrar && (
-                <div className="flex justify-between py-2 border-b border-gray-700">
-                  <span className="text-gray-400">Registrar:</span>
-                  <span className="text-white font-medium">{domainResult.registrar}</span>
-                </div>
-              )}
-              {domainResult.registrationDate && (
-                <div className="flex justify-between py-2 border-b border-gray-700">
-                  <span className="text-gray-400">Registered:</span>
-                  <span className="text-white">{new Date(domainResult.registrationDate).toLocaleDateString()}</span>
-                </div>
-              )}
-              {domainResult.expirationDate && (
-                <div className="flex justify-between py-2 border-b border-gray-700">
-                  <span className="text-gray-400">Expires:</span>
-                  <span className="text-white">{new Date(domainResult.expirationDate).toLocaleDateString()}</span>
-                </div>
-              )}
-
-              <div className="mt-6 p-4 bg-gray-900 rounded-lg">
-                <p className="text-gray-300 text-xs leading-relaxed">
-                  This domain is currently registered. You can try making an offer to the current owner through Namecheap's domain marketplace.
-                </p>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => handleMakeOffer(domainResult.query)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Make an Offer
-                </button>
-                <button
-                  onClick={() => setShowWhoisModal(false)}
-                  className="px-4 py-2 bg-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
