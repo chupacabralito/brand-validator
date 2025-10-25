@@ -7,7 +7,7 @@ const brandKitService = new BrandKitService(process.env.AI_MODEL || 'claude-3.5'
 
 export async function POST(request: NextRequest) {
   try {
-    const { idea, tone, audience, domain, constraints, mustContain, avoid } = await request.json();
+    const { idea, tone, audience, domain } = await request.json();
 
     if (!idea || typeof idea !== 'string') {
       return NextResponse.json(
@@ -16,16 +16,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!tone || !['modern', 'playful', 'serious'].includes(tone)) {
+    // Tone is optional - defaults to generating "modern" first
+    if (tone && !['modern', 'playful', 'formal'].includes(tone)) {
       return NextResponse.json(
-        { error: 'Tone must be one of: modern, playful, serious' },
-        { status: 400 }
-      );
-    }
-
-    if (!audience || typeof audience !== 'string') {
-      return NextResponse.json(
-        { error: 'Audience is required' },
+        { error: 'Tone must be one of: modern, playful, formal' },
         { status: 400 }
       );
     }
@@ -34,10 +28,7 @@ export async function POST(request: NextRequest) {
       idea,
       tone,
       audience,
-      domain,
-      constraints,
-      mustContain,
-      avoid
+      domain
     };
 
     const result = await brandKitService.generateBrandKit(input);

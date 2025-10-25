@@ -56,19 +56,32 @@ export type SocialCheckResult = {
   overallScore: number; // 0-100 based on availability across platforms
 }
 
-export type BrandKit = {
-  rationale: string;               // 2–3 sentences: "why these directions"
-  nameVariants: { value: string; tone: "modern"|"playful"|"serious"; score: number }[];
-  taglines: string[];
-  voice: { adjectives: string[]; sampleOneLiner: string };
-  logoPrompts: string[];           // prompts for logo gen tools (SVG-first bias)
-  socialHandleIdeas: string[];     // adjusted for availability
-  starterCopy: {
-    heroH1: string;
-    subhead: string;
-    valueProps: string[];
-    boilerplate: string;
+export type BrandTone = "modern" | "playful" | "formal";
+
+export type ToneCreative = {
+  tagline: string;                // Single tagline for this tone
+  logoPrompt: string;             // Detailed logo concept with colors/typography
+  colors: {
+    primary: string;              // Hex code
+    secondary: string;            // Hex code
+    accent?: string;              // Hex code (optional)
   };
+  typography: {
+    heading: string;              // Font name
+    body: string;                 // Font name
+  };
+};
+
+export type BrandKit = {
+  brandName: string;              // Search query stripped of TLD (e.g., "sportspace")
+  tones: {
+    modern: ToneCreative | null;  // Generated initially
+    playful: ToneCreative | null; // Lazy loaded
+    formal: ToneCreative | null;  // Lazy loaded
+  };
+  // Legacy fields for backward compatibility (optional)
+  rationale?: string;
+  voice?: { adjectives: string[]; sampleOneLiner: string };
 }
 
 export type IPGuidance = {

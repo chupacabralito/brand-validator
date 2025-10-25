@@ -21,8 +21,19 @@ export const affiliate = {
     return `https://www.logoai.com/?coupon=${affiliateId}&brand=${encodeURIComponent(brand)}&utm_source=brandvalidator&utm_medium=affiliate&utm_campaign=logo`;
   },
 
-  zoviz(brand: string, affiliateId: string) {
-    return `https://zoviz.com/?ref=${affiliateId}&brand=${encodeURIComponent(brand)}&utm_source=brandvalidator&utm_medium=affiliate&utm_campaign=logo`;
+  zoviz(brandName: string, tagline: string, logoPrompt: string, affiliateId?: string) {
+    // Build Zoviz app/album URL with dynamic brand kit parameters
+    const url = new URL('https://zoviz.com/app/album');
+    url.searchParams.set('brand_name', brandName);
+    url.searchParams.set('tagline_text', tagline);
+    url.searchParams.set('description', logoPrompt);
+
+    // Optional affiliate tracking
+    if (affiliateId) {
+      url.searchParams.set('ref', affiliateId);
+    }
+
+    return url.toString();
   },
 
   logome(brand: string, affiliateId: string) {
@@ -82,7 +93,9 @@ export class AffiliateService {
         case 'logoai':
           return affiliate.logoai(params.brand, affiliateId);
         case 'zoviz':
-          return affiliate.zoviz(params.brand, affiliateId);
+          // Note: This is a legacy fallback. New code should use the affiliate click route
+          // with full brand kit parameters (brandName, tagline, logoPrompt)
+          return affiliate.zoviz(params.brand, '', '', affiliateId);
         case 'logome':
           return affiliate.logome(params.brand, affiliateId);
         default:

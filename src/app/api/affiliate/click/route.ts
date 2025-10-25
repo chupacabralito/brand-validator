@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     const partner = searchParams.get('partner');
     const offer = searchParams.get('offer');
     const url = searchParams.get('url');
+    const brandName = searchParams.get('brandName');
+    const tagline = searchParams.get('tagline');
+    const logoPrompt = searchParams.get('logoPrompt');
 
     if (!partner || !offer || !url) {
       return NextResponse.json(
@@ -84,7 +87,13 @@ export async function GET(request: NextRequest) {
         affiliateLink = affiliate.logoai(url, affiliateId);
         break;
       case 'zoviz':
-        affiliateLink = affiliate.zoviz(url, affiliateId);
+        // Use new dynamic parameters if available, otherwise fallback to URL
+        if (brandName && tagline && logoPrompt) {
+          affiliateLink = affiliate.zoviz(brandName, tagline, logoPrompt, affiliateId);
+        } else {
+          // Fallback for old format
+          affiliateLink = `https://zoviz.com/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        }
         break;
       case 'logome':
         affiliateLink = affiliate.logome(url, affiliateId);
@@ -167,9 +176,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('API received body:', body);
-    
-    const { partner, offer, url } = body;
-    console.log('Extracted values:', { partner, offer, url });
+
+    const { partner, offer, url, brandName, tagline, logoPrompt } = body;
+    console.log('Extracted values:', { partner, offer, url, brandName, tagline, logoPrompt });
 
     if (!partner || !offer || !url) {
       console.error('Missing required fields:', { partner, offer, url });
@@ -243,7 +252,13 @@ export async function POST(request: NextRequest) {
         affiliateLink = affiliate.logoai(url, affiliateId);
         break;
       case 'zoviz':
-        affiliateLink = affiliate.zoviz(url, affiliateId);
+        // Use new dynamic parameters if available, otherwise fallback to URL
+        if (brandName && tagline && logoPrompt) {
+          affiliateLink = affiliate.zoviz(brandName, tagline, logoPrompt, affiliateId);
+        } else {
+          // Fallback for old format
+          affiliateLink = `https://zoviz.com/?ref=${affiliateId}&brand=${encodeURIComponent(url)}`;
+        }
         break;
       case 'logome':
         affiliateLink = affiliate.logome(url, affiliateId);
