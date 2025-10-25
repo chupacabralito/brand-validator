@@ -66,28 +66,37 @@ export interface CategoryRisk {
   marketSaturation: number;
 }
 
-// Zyla Trademark Search API response interfaces
+// Zyla Trademark Search API response interfaces (actual format from API)
+interface ZylaTrademarkOwner {
+  name: string;
+  address1?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+}
+
+interface ZylaTrademarkClassification {
+  international_code: string;
+  us_code?: string[];
+}
+
 interface ZylaTrademarkResult {
-  serialNumber?: string;
-  registrationNumber?: string;
-  trademarkName: string;
-  owner: string;
-  ownerAddress?: string;
-  status: string;
-  statusDate?: string;
-  filingDate?: string;
-  registrationDate?: string;
+  serial_number?: string;
+  registration_number?: string;
+  keyword: string;  // This is the trademark name
+  owners?: ZylaTrademarkOwner[];
+  status_label?: string;
+  status_code?: string;
+  status_date?: string;
+  filing_date?: string;
+  registration_date?: string;
   description?: string;
-  goodsAndServices?: string;
-  internationalClasses?: string[];
-  niceClasses?: number[];
+  classification?: ZylaTrademarkClassification[];
 }
 
 interface ZylaTrademarkResponse {
-  success: boolean;
-  data: ZylaTrademarkResult[];
-  count?: number;
-  message?: string;
+  count: number;
+  items: ZylaTrademarkResult[];  // API uses "items" not "data"
 }
 
 // Marker API response interfaces (kept as fallback)
@@ -275,15 +284,16 @@ export class TrademarkSearchService {
    */
   private async searchZylaAPI(brandName: string): Promise<TrademarkMatch[]> {
     try {
-      // Zyla Trademark Search API - GET endpoint with query parameter
-      const apiUrl = `https://zylalabs.com/api/1495/trademark+search+api/1238/trademark+search?keyword=${encodeURIComponent(brandName)}`;
+      // Zyla Trademark Search API - GET endpoint with BOTH required parameters
+      const apiUrl = `https://zylalabs.com/api/1495/trademark+search+api/1238/trademark+search?keyword=${encodeURIComponent(brandName)}&searchType=all`;
 
-      console.log(`Zyla API: Searching for "${brandName}"`);
+      console.log(`Zyla API: Searching for "${brandName}" (searchType: all)`);
 
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.zylaApiKey}`
+          'Authorization': `Bearer ${this.zylaApiKey}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -295,12 +305,12 @@ export class TrademarkSearchService {
 
       const data: ZylaTrademarkResponse = await response.json();
 
-      if (!data.success || !data.data || data.data.length === 0) {
+      if (!data.items || data.items.length === 0) {
         console.log('Zyla API: No trademarks found');
         return [];
       }
 
-      console.log(`Zyla API: Found ${data.data.length} trademark(s) for "${brandName}"`);
+      console.log(`Zyla API: Found ${data.items.length} trademark(s) for "${brandName}" (total: ${data.count})`);
 
       // Parse and return matches
       return this.parseZylaAPIResponse(data, brandName);
@@ -317,30 +327,43 @@ export class TrademarkSearchService {
   private parseZylaAPIResponse(data: ZylaTrademarkResponse, brandName: string): TrademarkMatch[] {
     const matches: TrademarkMatch[] = [];
 
-    for (const tm of data.data) {
-      // Parse Nice classes
-      const classes: number[] = tm.niceClasses || [];
+    for (const tm of data.items) {
+      // Parse Nice classes from classification
+      const classes: number[] = [];
+
+      // Parse classification codes
+      if (tm.classification) {
+        for (const cls of tm.classification) {
+          const classNum = parseInt(cls.international_code);
+          if (!isNaN(classNum)) {
+            classes.push(classNum);
+          }
+        }
+      }
 
       // Parse goods and services
       const goodsAndServices: string[] = [];
-      if (tm.goodsAndServices) {
-        goodsAndServices.push(tm.goodsAndServices);
-      }
-      if (tm.description && tm.description !== tm.goodsAndServices) {
+      if (tm.description) {
         goodsAndServices.push(tm.description);
       }
 
+      // Get owner name from owners array
+      const ownerName = tm.owners && tm.owners.length > 0 ? tm.owners[0].name : 'Unknown';
+
       // Calculate similarity score
-      const similarityScore = this.calculateSimilarity(brandName, tm.trademarkName);
+      const similarityScore = this.calculateSimilarity(brandName, tm.keyword);
 
       // Determine risk level based on similarity and status
       let riskLevel: 'low' | 'medium' | 'high' = this.calculateRiskLevel(similarityScore);
 
+      // Get status from either status_label or status_code
+      const status = tm.status_label || tm.status_code || 'Unknown';
+
       // Increase risk if trademark is active/registered
-      if (tm.status && (
-        tm.status.toLowerCase().includes('registered') ||
-        tm.status.toLowerCase().includes('active') ||
-        tm.status.toLowerCase().includes('live')
+      if (status && (
+        status.toLowerCase().includes('registered') ||
+        status.toLowerCase().includes('active') ||
+        status.toLowerCase().includes('live')
       )) {
         if (similarityScore >= 75) {
           riskLevel = 'high';
@@ -350,16 +373,16 @@ export class TrademarkSearchService {
       }
 
       const match: TrademarkMatch = {
-        mark: tm.trademarkName,
-        owner: tm.owner || 'Unknown',
-        status: tm.status || 'Unknown',
-        registrationNumber: tm.registrationNumber || tm.serialNumber || undefined,
-        filingDate: tm.filingDate || undefined,
+        mark: tm.keyword,
+        owner: ownerName,
+        status: status,
+        registrationNumber: tm.registration_number || tm.serial_number || undefined,
+        filingDate: tm.filing_date || undefined,
         goodsAndServices,
         classes,
         similarityScore,
         riskLevel,
-        notes: `Found via Zyla Trademark API - ${tm.status || 'Status unknown'}`
+        notes: `Found via Zyla Trademark API - ${status}`
       };
 
       matches.push(match);
