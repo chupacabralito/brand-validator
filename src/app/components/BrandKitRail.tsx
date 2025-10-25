@@ -292,17 +292,6 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
         </div>
       )}
 
-      {/* Domain Check (Secondary Action) */}
-      {onCheckDomain && (
-        <div className="mt-6 pt-6 border-t border-gray-700">
-          <button
-            onClick={() => onCheckDomain(`${brandKit.brandName.toLowerCase()}.com`)}
-            className="w-full bg-gray-600 text-white py-2 px-3 rounded text-xs hover:bg-gray-700 transition-colors"
-          >
-            Check Domain: {brandKit.brandName.toLowerCase()}.com
-          </button>
-        </div>
-      )}
     </StandardContainer>
   );
 }
