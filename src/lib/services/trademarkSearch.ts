@@ -352,6 +352,12 @@ export class TrademarkSearchService {
       // Get status from either status_label or status_code
       const status = tm.status_label || tm.status_code || 'Unknown';
 
+      // Filter out dead/cancelled/abandoned trademarks - they pose no legal threat
+      const inactiveStatuses = ['dead', 'cancelled', 'abandoned', 'expired', 'inactive', 'withdrawn'];
+      if (inactiveStatuses.some(s => status.toLowerCase().includes(s))) {
+        continue; // Skip this trademark - not a legal threat
+      }
+
       // Increase risk if trademark is active/registered
       if (status && (
         status.toLowerCase().includes('registered') ||
@@ -507,6 +513,12 @@ export class TrademarkSearchService {
 
       // Determine risk level based on similarity and status
       let riskLevel: 'low' | 'medium' | 'high' = this.calculateRiskLevel(similarityScore);
+
+      // Filter out dead/cancelled/abandoned trademarks - they pose no legal threat
+      const inactiveStatuses = ['dead', 'cancelled', 'abandoned', 'expired', 'inactive', 'withdrawn'];
+      if (tm.status && inactiveStatuses.some(s => tm.status.toLowerCase().includes(s))) {
+        continue; // Skip this trademark - not a legal threat
+      }
 
       // Increase risk if trademark is active/registered
       if (tm.status && (
