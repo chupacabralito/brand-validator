@@ -349,7 +349,7 @@ export default function Home() {
             The most complete domain validation tool on the web
           </h2>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Check domain availability, generate brand kits, validate trademarks, and get social handle availability.
+            Check domains and trademarks, generate logo kits, and get social handle availability in one search.
           </p>
         </div>
 
