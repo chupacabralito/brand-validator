@@ -30,8 +30,8 @@ export class SocialService {
     // Platforms verified by Zyla API (priority platforms)
     const zylaPlatforms: SocialPlatform[] = ['instagram', 'tiktok', 'facebook'];
 
-    // Platforms using heuristics
-    const heuristicPlatforms: SocialPlatform[] = ['twitter', 'youtube', 'linkedin', 'snapchat', 'pinterest', 'discord'];
+    // Priority platforms using heuristics (removed: snapchat, pinterest, discord)
+    const heuristicPlatforms: SocialPlatform[] = ['twitter', 'youtube', 'linkedin'];
 
     let results: SocialHandleResult[] = [];
 
@@ -71,8 +71,8 @@ export class SocialService {
     // Always use heuristics for remaining platforms
     results.push(...heuristicPlatforms.map(p => this.checkPlatform(baseHandle, p)));
 
-    // Sort by platform order
-    const platformOrder: SocialPlatform[] = ['instagram', 'tiktok', 'twitter', 'youtube', 'linkedin', 'facebook', 'snapchat', 'pinterest', 'discord'];
+    // Sort by platform order (priority platforms only)
+    const platformOrder: SocialPlatform[] = ['instagram', 'tiktok', 'twitter', 'youtube', 'linkedin', 'facebook'];
     results.sort((a, b) => platformOrder.indexOf(a.platform as SocialPlatform) - platformOrder.indexOf(b.platform as SocialPlatform));
 
     const overallScore = this.calculateOverallScore(results);

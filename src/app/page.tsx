@@ -219,7 +219,7 @@ export default function Home() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domain: searchQuery }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(15000) // 15s timeout (domain check can be slow)
           }),
           fetch('/api/brand-kit', {
             method: 'POST',
@@ -230,19 +230,19 @@ export default function Home() {
               audience: 'tech professionals',
               domain: searchQuery
             }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(15000) // 15s timeout (AI generation can be slow)
           }),
           fetch('/api/trademark-search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ brandName: domainRoot }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(35000) // 35s timeout (trademark search is slowest)
           }),
           fetch('/api/social-check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ handleBase: domainRoot }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(15000) // 15s timeout (Zyla API can be slow)
           })
         ]);
 
@@ -279,13 +279,13 @@ export default function Home() {
               tone: 'modern',
               audience: 'general audience'
             }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(15000) // 15s timeout (AI generation can be slow)
           }),
           fetch('/api/social-check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ handleBase }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(15000) // 15s timeout (Zyla API can be slow)
           }),
           fetch('/api/trademark-search', {
             method: 'POST',
@@ -295,7 +295,7 @@ export default function Home() {
               classes: [35, 42], // Default business classes for ideas
               includeInternational: false
             }),
-            signal: AbortSignal.timeout(10000) // 10s timeout
+            signal: AbortSignal.timeout(35000) // 35s timeout (trademark search is slowest)
           })
         ]);
 
