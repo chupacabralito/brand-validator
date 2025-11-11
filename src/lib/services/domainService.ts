@@ -53,29 +53,34 @@ export class DomainService {
 
     try {
 
-      // Check cache first (unless bypassing cache)
+      // Check cache first (unless bypassing cache) - non-blocking
       if (!bypassCache) {
-        const cached = await prisma.domainCache.findUnique({
-          where: { domain: cleanDomain }
-        });
+        try {
+          const cached = await prisma.domainCache.findUnique({
+            where: { domain: cleanDomain }
+          });
 
-        if (cached && cached.expiresAt > new Date()) {
-          console.log('Cache hit for domain:', cleanDomain);
-          return {
-            domain: cleanDomain,
-            available: cached.availability,
-            registrar: (cached.whoisData as any)?.registrar,
-            registrationDate: (cached.whoisData as any)?.registrationDate,
-            expirationDate: (cached.whoisData as any)?.expirationDate,
-            status: cached.availability ? 'available' : 'registered',
-            nameServers: (cached.whoisData as any)?.nameServers || [],
-            whoisData: cached.whoisData,
-            alternatives: (cached.alternates as unknown as DomainAlternative[]) || [],
-            pricing: (cached.registrarPrices as unknown as DomainPricing) || this.getDomainPricing(cleanDomain),
-            lastChecked: cached.updatedAt.toISOString(),
-            cacheExpiry: cached.expiresAt.toISOString(),
-            fromCache: true
-          };
+          if (cached && cached.expiresAt > new Date()) {
+            console.log('Cache hit for domain:', cleanDomain);
+            return {
+              domain: cleanDomain,
+              available: cached.availability,
+              registrar: (cached.whoisData as any)?.registrar,
+              registrationDate: (cached.whoisData as any)?.registrationDate,
+              expirationDate: (cached.whoisData as any)?.expirationDate,
+              status: cached.availability ? 'available' : 'registered',
+              nameServers: (cached.whoisData as any)?.nameServers || [],
+              whoisData: cached.whoisData,
+              alternatives: (cached.alternates as unknown as DomainAlternative[]) || [],
+              pricing: (cached.registrarPrices as unknown as DomainPricing) || this.getDomainPricing(cleanDomain),
+              lastChecked: cached.updatedAt.toISOString(),
+              cacheExpiry: cached.expiresAt.toISOString(),
+              fromCache: true
+            };
+          }
+        } catch (cacheError) {
+          console.warn('Cache lookup failed (non-blocking):', cacheError instanceof Error ? cacheError.message : cacheError);
+          // Continue without cache - don't break domain check
         }
       }
 

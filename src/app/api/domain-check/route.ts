@@ -49,17 +49,22 @@ export async function POST(request: NextRequest) {
       domainsToCheck = commonTlds.map(tld => domain + tld);
     }
 
-    // Get or create session
+    // Get or create session (non-blocking - database issues shouldn't break domain check)
     if (!sessionId) {
       sessionId = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
     }
-    
-    await analytics.getOrCreateSession(
-      sessionId,
-      request.headers.get('user-agent') || undefined,
-      request.headers.get('x-forwarded-for') || undefined,
-      request.headers.get('referer') || undefined
-    );
+
+    try {
+      await analytics.getOrCreateSession(
+        sessionId,
+        request.headers.get('user-agent') || undefined,
+        request.headers.get('x-forwarded-for') || undefined,
+        request.headers.get('referer') || undefined
+      );
+    } catch (error) {
+      console.warn('Failed to create session (non-blocking):', error instanceof Error ? error.message : error);
+      // Continue without session tracking - don't break the domain check
+    }
 
     // Check availability - for single domain, include alternatives
     if (domainsToCheck.length === 1) {
@@ -90,27 +95,35 @@ export async function POST(request: NextRequest) {
 
       const responseTime = Date.now() - startTime;
 
-      // Track the search
-      await analytics.trackSearch(
-        sessionId,
-        domain,
-        'domain',
-        { domainResult: finalResult },
-        responseTime,
-        true
-      );
+      // Track the search (non-blocking - database issues shouldn't break domain check)
+      try {
+        await analytics.trackSearch(
+          sessionId,
+          domain,
+          'domain',
+          { domainResult: finalResult },
+          responseTime,
+          true
+        );
+      } catch (error) {
+        console.warn('Failed to track search (non-blocking):', error instanceof Error ? error.message : error);
+      }
 
-      // Track analytics event
-      await analytics.trackEvent(
-        sessionId,
-        'search',
-        'domain_check',
-        { domain, available: finalResult.available },
-        request.headers.get('user-agent') || undefined,
-        request.headers.get('x-forwarded-for') || undefined,
-        request.headers.get('referer') || undefined,
-        '/api/domain-check'
-      );
+      // Track analytics event (non-blocking - database issues shouldn't break domain check)
+      try {
+        await analytics.trackEvent(
+          sessionId,
+          'search',
+          'domain_check',
+          { domain, available: finalResult.available },
+          request.headers.get('user-agent') || undefined,
+          request.headers.get('x-forwarded-for') || undefined,
+          request.headers.get('referer') || undefined,
+          '/api/domain-check'
+        );
+      } catch (error) {
+        console.warn('Failed to track event (non-blocking):', error instanceof Error ? error.message : error);
+      }
 
       const response = NextResponse.json(finalResult);
 
@@ -201,27 +214,35 @@ export async function POST(request: NextRequest) {
       finalResult = successfulResults[0];
     }
 
-    // Track the search
-    await analytics.trackSearch(
-      sessionId,
-      domain,
-      'domain',
-      { domainResult: finalResult },
-      responseTime,
-      true
-    );
+    // Track the search (non-blocking - database issues shouldn't break domain check)
+    try {
+      await analytics.trackSearch(
+        sessionId,
+        domain,
+        'domain',
+        { domainResult: finalResult },
+        responseTime,
+        true
+      );
+    } catch (error) {
+      console.warn('Failed to track search (non-blocking):', error instanceof Error ? error.message : error);
+    }
 
-    // Track analytics event
-    await analytics.trackEvent(
-      sessionId,
-      'search',
-      'domain_check',
-      { domain, available: finalResult.available },
-      request.headers.get('user-agent') || undefined,
-      request.headers.get('x-forwarded-for') || undefined,
-      request.headers.get('referer') || undefined,
-      '/api/domain-check'
-    );
+    // Track analytics event (non-blocking - database issues shouldn't break domain check)
+    try {
+      await analytics.trackEvent(
+        sessionId,
+        'search',
+        'domain_check',
+        { domain, available: finalResult.available },
+        request.headers.get('user-agent') || undefined,
+        request.headers.get('x-forwarded-for') || undefined,
+        request.headers.get('referer') || undefined,
+        '/api/domain-check'
+      );
+    } catch (error) {
+      console.warn('Failed to track event (non-blocking):', error instanceof Error ? error.message : error);
+    }
 
     const response = NextResponse.json(finalResult);
     
@@ -235,20 +256,24 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Domain check error:', error);
-    
+
     const responseTime = Date.now() - startTime;
-    
-    // Track failed search
+
+    // Track failed search (non-blocking - database issues shouldn't break error response)
     if (sessionId) {
-      await analytics.trackSearch(
-        sessionId,
-        domain || 'unknown',
-        'domain',
-        {},
-        responseTime,
-        false,
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      try {
+        await analytics.trackSearch(
+          sessionId,
+          domain || 'unknown',
+          'domain',
+          {},
+          responseTime,
+          false,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      } catch (trackError) {
+        console.warn('Failed to track error (non-blocking):', trackError instanceof Error ? trackError.message : trackError);
+      }
     }
 
     return NextResponse.json(
