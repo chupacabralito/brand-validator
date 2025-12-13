@@ -19,6 +19,7 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
     categorySpecificRisks: CategoryRisk[];
     updatedRiskAssessment: any;
   } | null>(null);
+  const [showAllMatches, setShowAllMatches] = useState(false);
 
   // Trademark filing partners
   const trademarkPartners: Partner[] = [
@@ -333,11 +334,11 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
         <div className="mb-4">
           <h3 className="font-semibold mb-2 text-white text-sm">Trademark Conflicts</h3>
 
-          {/* Exact Matches - HIGH RISK */}
+          {/* Exact Matches - HIGH RISK - Limit to top 3 by default */}
           {result.exactMatches.length > 0 && (
             <div className="mb-3">
               <div className="space-y-2">
-                {result.exactMatches.map((match, index) => (
+                {(showAllMatches ? result.exactMatches : result.exactMatches.slice(0, 3)).map((match, index) => (
                   <div key={index} className="border border-red-600/30 rounded p-3 bg-red-900/20">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium text-red-300 text-sm">⚠️ {match.mark}</span>
@@ -352,14 +353,31 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
                   </div>
                 ))}
               </div>
+
+              {/* Show More button if there are more than 3 exact matches */}
+              {result.exactMatches.length > 3 && (
+                <button
+                  onClick={() => setShowAllMatches(!showAllMatches)}
+                  className="mt-3 w-full text-xs text-gray-400 hover:text-gray-300 py-2 px-3 rounded-lg border border-gray-700 hover:border-gray-600 bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
+                >
+                  {showAllMatches ? (
+                    <>Hide {result.exactMatches.length - 3} additional conflicts</>
+                  ) : (
+                    <>Show {result.exactMatches.length - 3} more conflicts</>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
-          {/* Similar Matches - Only show high similarity */}
+          {/* Similar Matches - Only show high similarity - Limit to top 3 */}
           {result.similarMatches.filter(m => m.similarityScore >= 80).length > 0 && (
             <div>
               <div className="space-y-2">
-                {result.similarMatches.filter(m => m.similarityScore >= 80).map((match, index) => (
+                {(showAllMatches
+                  ? result.similarMatches.filter(m => m.similarityScore >= 80)
+                  : result.similarMatches.filter(m => m.similarityScore >= 80).slice(0, 3)
+                ).map((match, index) => (
                   <div key={index} className="border border-yellow-600/30 rounded p-3 bg-yellow-900/20">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium text-yellow-300 text-sm">{match.mark}</span>
@@ -374,6 +392,20 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
                   </div>
                 ))}
               </div>
+
+              {/* Show More button if there are more than 3 similar matches */}
+              {result.similarMatches.filter(m => m.similarityScore >= 80).length > 3 && (
+                <button
+                  onClick={() => setShowAllMatches(!showAllMatches)}
+                  className="mt-3 w-full text-xs text-gray-400 hover:text-gray-300 py-2 px-3 rounded-lg border border-gray-700 hover:border-gray-600 bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
+                >
+                  {showAllMatches ? (
+                    <>Hide additional similar matches</>
+                  ) : (
+                    <>Show {result.similarMatches.filter(m => m.similarityScore >= 80).length - 3} more similar matches</>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
