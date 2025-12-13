@@ -1,7 +1,7 @@
 import { SocialCheckResult, SocialHandleResult } from '../models/DomainResult';
 import { SocialHandleHeuristics } from './socialHeuristics';
 
-type SocialPlatform = "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord";
+type SocialPlatform = "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord" | "threads" | "reddit" | "twitch" | "medium" | "github";
 
 // Zyla API response interfaces
 interface ZylaSocialMedia {
@@ -30,8 +30,8 @@ export class SocialService {
     // Platforms verified by Zyla API (priority platforms)
     const zylaPlatforms: SocialPlatform[] = ['instagram', 'tiktok', 'facebook'];
 
-    // Priority platforms using heuristics (removed: snapchat, pinterest, discord)
-    const heuristicPlatforms: SocialPlatform[] = ['twitter', 'youtube', 'linkedin'];
+    // Top-tier platforms using heuristics
+    const heuristicPlatforms: SocialPlatform[] = ['twitter', 'youtube', 'linkedin', 'threads', 'reddit', 'twitch', 'medium', 'github'];
 
     let results: SocialHandleResult[] = [];
 
@@ -71,8 +71,8 @@ export class SocialService {
     // Always use heuristics for remaining platforms
     results.push(...heuristicPlatforms.map(p => this.checkPlatform(baseHandle, p)));
 
-    // Sort by platform order (priority platforms only)
-    const platformOrder: SocialPlatform[] = ['instagram', 'tiktok', 'twitter', 'youtube', 'linkedin', 'facebook'];
+    // Sort by platform order (priority platforms first)
+    const platformOrder: SocialPlatform[] = ['instagram', 'tiktok', 'twitter', 'threads', 'youtube', 'linkedin', 'facebook', 'reddit', 'twitch', 'medium', 'github', 'snapchat', 'pinterest', 'discord'];
     results.sort((a, b) => platformOrder.indexOf(a.platform as SocialPlatform) - platformOrder.indexOf(b.platform as SocialPlatform));
 
     const overallScore = this.calculateOverallScore(results);
@@ -177,8 +177,8 @@ export class SocialService {
   }
 
   private formatHandle(handle: string, platform: string): string {
-    // Instagram, TikTok, Twitter use @
-    if (['instagram', 'tiktok', 'twitter'].includes(platform.toLowerCase())) {
+    // Instagram, TikTok, Twitter, Threads use @
+    if (['instagram', 'tiktok', 'twitter', 'threads'].includes(platform.toLowerCase())) {
       return `@${handle}`;
     }
     return handle;
@@ -195,18 +195,68 @@ export class SocialService {
         return `https://www.tiktok.com/@${cleanHandle}`;
       case 'twitter':
         return `https://twitter.com/${cleanHandle}`;
+      case 'threads':
+        return `https://www.threads.net/@${cleanHandle}`;
       case 'youtube':
         return `https://www.youtube.com/@${cleanHandle}`;
       case 'linkedin':
         return `https://www.linkedin.com/in/${cleanHandle}`;
       case 'facebook':
         return `https://www.facebook.com/${cleanHandle}`;
+      case 'reddit':
+        return `https://www.reddit.com/user/${cleanHandle}`;
+      case 'twitch':
+        return `https://www.twitch.tv/${cleanHandle}`;
+      case 'medium':
+        return `https://medium.com/@${cleanHandle}`;
+      case 'github':
+        return `https://github.com/${cleanHandle}`;
       case 'snapchat':
         return `https://www.snapchat.com/add/${cleanHandle}`;
       case 'pinterest':
         return `https://www.pinterest.com/${cleanHandle}`;
       case 'discord':
         return `https://discord.gg/${cleanHandle}`;
+      default:
+        return '#';
+    }
+  }
+
+  /**
+   * Get registration/signup URL for each platform
+   */
+  getRegistrationUrl(platform: string): string {
+    const normalized = platform.toLowerCase();
+
+    switch (normalized) {
+      case 'instagram':
+        return 'https://www.instagram.com/accounts/emailsignup/';
+      case 'tiktok':
+        return 'https://www.tiktok.com/signup';
+      case 'twitter':
+        return 'https://twitter.com/i/flow/signup';
+      case 'threads':
+        return 'https://www.threads.net';
+      case 'youtube':
+        return 'https://www.youtube.com/create_channel';
+      case 'linkedin':
+        return 'https://www.linkedin.com/signup';
+      case 'facebook':
+        return 'https://www.facebook.com/reg/';
+      case 'reddit':
+        return 'https://www.reddit.com/register/';
+      case 'twitch':
+        return 'https://www.twitch.tv/signup';
+      case 'medium':
+        return 'https://medium.com/m/signin?operation=register';
+      case 'github':
+        return 'https://github.com/signup';
+      case 'snapchat':
+        return 'https://accounts.snapchat.com/accounts/signup';
+      case 'pinterest':
+        return 'https://www.pinterest.com/signup/';
+      case 'discord':
+        return 'https://discord.com/register';
       default:
         return '#';
     }

@@ -40,7 +40,7 @@ export type DomainResult = {
 }
 
 export type SocialHandleResult = {
-  platform: "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord";
+  platform: "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord" | "threads" | "reddit" | "twitch" | "medium" | "github";
   handle: string;
   available: boolean;
   url: string;

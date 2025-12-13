@@ -31,9 +31,18 @@ const COMMON_LAST_NAMES = new Set([
 ]);
 
 const TECH_BRANDS = new Set([
+  // Major tech companies
   'google', 'apple', 'microsoft', 'amazon', 'facebook', 'meta', 'twitter', 'instagram', 'tiktok', 'youtube',
   'netflix', 'tesla', 'uber', 'airbnb', 'spotify', 'slack', 'zoom', 'discord', 'reddit', 'linkedin',
-  'snapchat', 'pinterest', 'twitch', 'github', 'gitlab', 'docker', 'kubernetes', 'aws', 'azure', 'openai'
+  'snapchat', 'pinterest', 'twitch', 'github', 'gitlab', 'docker', 'kubernetes', 'aws', 'azure', 'openai',
+  // Additional major brands
+  'nike', 'adidas', 'coca', 'pepsi', 'walmart', 'target', 'starbucks', 'mcdonalds', 'samsung', 'sony',
+  'intel', 'nvidia', 'amd', 'oracle', 'ibm', 'hp', 'dell', 'lenovo', 'cisco', 'adobe', 'salesforce',
+  'paypal', 'visa', 'mastercard', 'spotify', 'shopify', 'stripe', 'square', 'venmo', 'cashapp',
+  // Media & entertainment
+  'espn', 'cnn', 'bbc', 'nba', 'nfl', 'mlb', 'nhl', 'fifa', 'xbox', 'playstation', 'nintendo',
+  // Generic terms
+  'news', 'sports', 'music', 'gaming', 'fitness', 'food', 'travel', 'fashion', 'beauty', 'tech'
 ]);
 
 const RESERVED_WORDS = new Set([
@@ -84,9 +93,51 @@ export class SocialHandleHeuristics {
     const clean = handle.toLowerCase().trim();
     const length = clean.length;
 
-    // Rule 1: Length Analysis (30% weight)
+    // PRIORITY CHECK 1: Exact brand match (decisive)
+    const brandScore = this.scoreBrands(clean);
+    if (brandScore === 100) {
+      // Exact brand match - DEFINITELY taken
+      return {
+        available: false,
+        confidence: 99,
+        score: 100,
+        factors: ['Exact match: major brand/company']
+      };
+    }
+
+    // PRIORITY CHECK 2: Reserved/system words (decisive)
+    if (RESERVED_WORDS.has(clean)) {
+      return {
+        available: false,
+        confidence: 99,
+        score: 100,
+        factors: ['Reserved system/platform word']
+      };
+    }
+
+    // PRIORITY CHECK 3: Very short handles (3 chars or less - almost always taken)
+    if (length <= 3) {
+      return {
+        available: false,
+        confidence: 95,
+        score: 95,
+        factors: [`Extremely short handle (${length} chars) - highly desirable`]
+      };
+    }
+
+    // PRIORITY CHECK 4: Common first names (very likely taken)
+    if (COMMON_FIRST_NAMES.has(clean)) {
+      return {
+        available: false,
+        confidence: 95,
+        score: 99,
+        factors: ['Very common first name']
+      };
+    }
+
+    // Rule 1: Length Analysis (25% weight - reduced from 30%)
     const lengthScore = this.scoreLength(length);
-    takenScore += lengthScore * 0.30;
+    takenScore += lengthScore * 0.25;
     if (lengthScore > 80) factors.push(`Very short handle (${length} chars)`);
     else if (lengthScore < 20) factors.push(`Long handle (${length} chars)`);
 
@@ -95,15 +146,15 @@ export class SocialHandleHeuristics {
     takenScore += dictScore * 0.20;
     if (dictScore > 70) factors.push('Common dictionary word');
 
-    // Rule 3: Name Patterns (15% weight)
+    // Rule 3: Name Patterns (20% weight - increased from 15%)
     const nameScore = this.scoreNames(clean);
-    takenScore += nameScore * 0.15;
+    takenScore += nameScore * 0.20;
     if (nameScore > 80) factors.push('Contains common name');
 
-    // Rule 4: Brand Names (15% weight)
-    const brandScore = this.scoreBrands(clean);
-    takenScore += brandScore * 0.15;
-    if (brandScore > 90) factors.push('Tech brand or company name');
+    // Rule 4: Brand Names (20% weight - increased from 15%)
+    // Already handled exact matches above, this is for partial matches
+    takenScore += brandScore * 0.20;
+    if (brandScore > 85) factors.push('Related to major brand');
 
     // Rule 5: Reserved Words (10% weight)
     const reservedScore = this.scoreReserved(clean);
