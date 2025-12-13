@@ -11,14 +11,15 @@ export async function POST(request: NextRequest) {
     console.log('Composite score API received:', body);
     const { domainResult, socialResult, trademarkResult, brandKit } = body as CompositeScoreInput;
 
-    const result = compositeScoreService.calculateCompositeScore({
+    // Use LLM-enhanced brand quality scoring for more accurate results
+    const result = await compositeScoreService.calculateCompositeScoreWithLLM({
       domainResult,
       socialResult,
       trademarkResult,
       brandKit
     });
 
-    console.log('Composite score calculated:', result);
+    console.log('Composite score calculated (LLM-enhanced):', result);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error calculating composite score:', error);

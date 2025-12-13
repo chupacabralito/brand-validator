@@ -53,9 +53,13 @@ export interface CompositeScoreResult {
 }
 
 export class CompositeScoreService {
+  // Cache for LLM brand quality scores (in-memory, could be Redis in production)
+  private static brandQualityCache = new Map<string, number>();
+
   /**
    * Calculate a unified composite score (0-100) that represents overall brand strength
    * Higher scores indicate better brand potential (availability, uniqueness, strength)
+   * This is the synchronous version using heuristics only
    */
   calculateCompositeScore(input: CompositeScoreInput): CompositeScoreResult {
     const weights = {
@@ -69,6 +73,46 @@ export class CompositeScoreService {
     const socialScore = this.calculateSocialScore(input.socialResult);
     const trademarkScore = this.calculateTrademarkScore(input.trademarkResult, input.selectedTrademarkCategory);
     const brandScore = this.calculateBrandScore(input.brandKit);
+
+    const overallScore = Math.round(
+      (domainScore.score * weights.domain) +
+      (socialScore.score * weights.social) +
+      (trademarkScore.score * weights.trademark) +
+      (brandScore.score * weights.brand)
+    );
+
+    const recommendation = this.getRecommendation(overallScore);
+    const summary = this.generateSummary(overallScore, domainScore, socialScore, trademarkScore, brandScore);
+
+    return {
+      overallScore,
+      breakdown: {
+        domain: { ...domainScore, weight: weights.domain },
+        social: { ...socialScore, weight: weights.social },
+        trademark: { ...trademarkScore, weight: weights.trademark },
+        brand: { ...brandScore, weight: weights.brand }
+      },
+      recommendation,
+      summary
+    };
+  }
+
+  /**
+   * Async version that uses LLM for enhanced brand quality evaluation
+   * Recommended for production use - much more accurate than heuristics
+   */
+  async calculateCompositeScoreWithLLM(input: CompositeScoreInput): Promise<CompositeScoreResult> {
+    const weights = {
+      domain: 0.25,
+      social: 0.20,
+      trademark: 0.30,
+      brand: 0.25
+    };
+
+    const domainScore = this.calculateDomainScore(input.domainResult);
+    const socialScore = this.calculateSocialScore(input.socialResult);
+    const trademarkScore = this.calculateTrademarkScore(input.trademarkResult, input.selectedTrademarkCategory);
+    const brandScore = await this.calculateBrandScoreWithLLM(input.brandKit); // LLM-enhanced
 
     const overallScore = Math.round(
       (domainScore.score * weights.domain) +
@@ -230,7 +274,7 @@ export class CompositeScoreService {
     // Risk-based scoring (inverted - lower risk = higher score)
     switch (trademarkResult.riskAssessment.overallRisk) {
       case 'low':
-        score = 90;
+        score = 100; // Perfect score for low risk - no artificial cap
         factors.push('Low trademark risk');
         break;
       case 'medium':
@@ -279,6 +323,99 @@ export class CompositeScoreService {
     return { score: Math.max(0, Math.min(100, score)), factors };
   }
 
+  /**
+   * Use LLM to evaluate brand name quality
+   * Cached to minimize API costs
+   */
+  private async evaluateBrandNameWithLLM(brandName: string): Promise<number> {
+    // Check cache first
+    const cached = CompositeScoreService.brandQualityCache.get(brandName.toLowerCase());
+    if (cached !== undefined) {
+      console.log(`Brand quality cache hit for "${brandName}": ${cached}`);
+      return cached;
+    }
+
+    // Import AI service dynamically to avoid circular dependencies
+    const { AIService } = await import('./aiService');
+
+    const aiService = new AIService({
+      provider: (process.env.AI_PROVIDER as any) || 'openai',
+      apiKey: process.env.AI_API_KEY,
+      model: process.env.AI_MODEL || 'gpt-4o-mini'
+    });
+
+    try {
+      const response = await aiService.generateContent({
+        system: `You are a brand naming expert. Evaluate the brand name quality on a scale of 0-100.
+
+Consider:
+- Pronounceability (easy to say?)
+- Memorability (easy to remember?)
+- Professionalism (sounds legitimate?)
+- Brandability (feels like a real brand?)
+- Uniqueness (stands out?)
+
+Examples:
+- "Google" = 95 (invented, memorable, pronounceable)
+- "Pikachu" = 90 (creative, fun, memorable)
+- "Spotify" = 92 (modern, unique, brandable)
+- "ThatSlaps" = 75 (casual, memorable, but informal)
+- "ioiubbbb" = 25 (gibberish, hard to pronounce, not brandable)
+- "qwerty" = 30 (keyboard pattern, no meaning)
+
+Return ONLY a number between 0-100. No explanation.`,
+        user: `Brand name: "${brandName}"`,
+        maxTokens: 10,
+        temperature: 0.3 // Low temperature for consistent scoring
+      });
+
+      const score = parseInt(response.trim());
+
+      // Validate score
+      if (isNaN(score) || score < 0 || score > 100) {
+        console.error(`Invalid LLM score for "${brandName}": ${response}`);
+        return 75; // Fallback to neutral score
+      }
+
+      // Cache the result
+      CompositeScoreService.brandQualityCache.set(brandName.toLowerCase(), score);
+      console.log(`LLM brand quality for "${brandName}": ${score}`);
+
+      return score;
+    } catch (error) {
+      console.error(`LLM brand evaluation failed for "${brandName}":`, error);
+      // Fallback to heuristic if LLM fails
+      return this.calculateHeuristicBrandScore(brandName);
+    }
+  }
+
+  /**
+   * Fallback heuristic scoring (used if LLM fails)
+   */
+  private calculateHeuristicBrandScore(brandName: string): number {
+    let score = 75;
+
+    // Length
+    if (brandName.length <= 6) score = 95;
+    else if (brandName.length <= 8) score = 85;
+    else if (brandName.length <= 12) score = 75;
+    else score = 60;
+
+    // Excessive repetition penalty
+    if (/(.)\1{2,}/.test(brandName)) {
+      score -= 25;
+    }
+
+    // Vowel ratio (pronounceability)
+    const vowels = (brandName.match(/[aeiou]/gi) || []).length;
+    const vowelRatio = vowels / brandName.length;
+    if (vowelRatio < 0.2 || vowelRatio > 0.7) {
+      score -= 15;
+    }
+
+    return Math.max(0, Math.min(100, score));
+  }
+
   private calculateBrandScore(brandKit?: CompositeScoreInput['brandKit']) {
     if (!brandKit) {
       return { score: 50, factors: ['No brand data available'] };
@@ -300,34 +437,22 @@ export class CompositeScoreService {
       // New structure with brandName and tones
       brandName = brandKit.brandName;
 
-      // Calculate score based on brand name characteristics
-      // Length scoring (30 points max)
+      // Use heuristic as fallback (will be enhanced by LLM in async version)
+      score = this.calculateHeuristicBrandScore(brandName);
+
       const length = brandName.length;
       if (length <= 6) {
-        score = 95;
-        factors.push('Very short, highly memorable name');
+        factors.push('Very short name');
       } else if (length <= 8) {
-        score = 85;
-        factors.push('Short, memorable name');
+        factors.push('Short name');
       } else if (length <= 12) {
-        score = 75;
-        factors.push('Good name length');
+        factors.push('Moderate length');
       } else {
-        score = 60;
-        factors.push('Longer name - consider shorter alternatives');
+        factors.push('Longer name');
       }
 
-      // Character quality bonus (5 points)
       if (!/[^a-zA-Z]/.test(brandName)) {
-        score += 5;
-        factors.push('Clean, professional name');
-      }
-
-      // Pronounceability check (5 points)
-      const vowelRatio = (brandName.match(/[aeiou]/gi) || []).length / brandName.length;
-      if (vowelRatio >= 0.3 && vowelRatio <= 0.6) {
-        score += 5;
-        factors.push('Easy to pronounce');
+        factors.push('Clean characters');
       }
     } else {
       return { score: 50, factors: ['Invalid brand data structure'] };
@@ -336,23 +461,62 @@ export class CompositeScoreService {
     // Name quality factors
     if (score >= 90) {
       if (!factors.some(f => f.includes('quality'))) {
-        factors.push('Excellent brand name quality');
-      }
-    } else if (score >= 80) {
-      if (!factors.some(f => f.includes('quality'))) {
-        factors.push('Good brand name quality');
+        factors.push('Excellent brand quality');
       }
     } else if (score >= 70) {
       if (!factors.some(f => f.includes('quality'))) {
-        factors.push('Fair brand name quality');
+        factors.push('Good brand quality');
+      }
+    } else if (score >= 50) {
+      if (!factors.some(f => f.includes('quality'))) {
+        factors.push('Fair brand quality');
       }
     } else {
       if (!factors.some(f => f.includes('quality'))) {
-        factors.push('Poor brand name quality');
+        factors.push('Poor brand quality');
       }
     }
 
     return { score: Math.max(0, Math.min(100, score)), factors };
+  }
+
+  /**
+   * Async version that uses LLM for brand quality
+   */
+  async calculateBrandScoreWithLLM(brandKit?: CompositeScoreInput['brandKit']) {
+    if (!brandKit || !brandKit.brandName) {
+      return this.calculateBrandScore(brandKit);
+    }
+
+    const brandName = brandKit.brandName;
+    const factors: string[] = [];
+
+    // Get LLM score
+    const score = await this.evaluateBrandNameWithLLM(brandName);
+
+    // Add contextual factors based on score
+    const length = brandName.length;
+    if (length <= 6) {
+      factors.push('Very short name');
+    } else if (length <= 8) {
+      factors.push('Short name');
+    } else if (length <= 12) {
+      factors.push('Moderate length');
+    } else {
+      factors.push('Longer name');
+    }
+
+    if (score >= 90) {
+      factors.push('Excellent AI-verified brand quality');
+    } else if (score >= 70) {
+      factors.push('Good AI-verified brand quality');
+    } else if (score >= 50) {
+      factors.push('Fair AI-verified brand quality');
+    } else {
+      factors.push('Poor AI-verified brand quality');
+    }
+
+    return { score, factors };
   }
 
   private getRecommendation(score: number): 'excellent' | 'good' | 'fair' | 'poor' {
