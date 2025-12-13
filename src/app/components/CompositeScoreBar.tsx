@@ -93,8 +93,8 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
             </svg>
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white">Brand Score</h3>
-            <p className="text-sm text-gray-400">Overall brand strength assessment</p>
+            <h3 className="text-xl font-bold text-white">Overall Brand Score</h3>
+            <p className="text-sm text-gray-400">Weighted average of all components</p>
           </div>
         </div>
 
@@ -132,6 +132,19 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
       {/* Score Breakdown - Expandable Section */}
       {showBreakdown && (
         <div className="mt-4 pt-4 border-t border-gray-700 space-y-4">
+          {/* Calculation Explanation */}
+          <div className="bg-indigo-900/20 rounded-lg p-3 border border-indigo-600/30">
+            <p className="text-xs text-indigo-300 mb-1">
+              <span className="font-semibold">Overall Score Calculation:</span>
+            </p>
+            <p className="text-xs text-gray-300">
+              Domain ({compositeResult.breakdown.domain.score}) × {compositeResult.breakdown.domain.weight * 100}% +
+              Social ({compositeResult.breakdown.social.score}) × {compositeResult.breakdown.social.weight * 100}% +
+              Trademark ({compositeResult.breakdown.trademark.score}) × {compositeResult.breakdown.trademark.weight * 100}% +
+              Name Quality ({compositeResult.breakdown.brand.score}) × {compositeResult.breakdown.brand.weight * 100}% = <span className="font-semibold text-indigo-300">{compositeResult.overallScore}</span>
+            </p>
+          </div>
+
           {/* Component Scores Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Domain Score */}
