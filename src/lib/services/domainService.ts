@@ -289,74 +289,27 @@ export class DomainService {
   private async getDomainAlternativesWithChecks(domain: string): Promise<DomainAlternative[]> {
     const baseDomain = domain.replace(/\.(com|net|org|co|io|app|dev|tech)$/, '');
 
-    // SMART HYBRID: Only pre-check 2 most valuable alternatives (.net, .io)
-    // This reduces load time from 17s to 8s while maintaining accuracy
-    const preCheckExtensions = ['.net', '.io'];
-    const uncheckedExtensions = ['.org', '.co'];
+    // INSTANT RESULTS: Don't check ANY alternatives upfront
+    // Return all as unchecked for on-demand verification
+    // This reduces initial load time from 10s to 3-5s (primary domain only)
+    const allExtensions = ['.net', '.io', '.org', '.co'];
 
-    // Check availability for pre-checked alternatives in parallel using WHOIS API
-    const checkedAlternativesPromises = preCheckExtensions
-      .map(ext => baseDomain + ext)
-      .filter(altDomain => altDomain !== domain)
-      .map(async (altDomain) => {
-        let available = true; // Default to available if check fails
-
-        try {
-          if (this.whoisApiKey) {
-            // Use WHOIS API for accurate results
-            const whoisApiUrl = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${this.whoisApiKey}&domainName=${altDomain}&outputFormat=JSON`;
-            const response = await fetch(whoisApiUrl, {
-              headers: {
-                'User-Agent': 'BrandValidator/1.0',
-                'Accept': 'application/json'
-              },
-              signal: AbortSignal.timeout(10000) // 10 second timeout per alternative
-            });
-
-            if (response.ok) {
-              const whoisData = await response.json();
-              available = this.parseRealWHOISData(whoisData);
-              console.log(`WHOIS check for ${altDomain}: ${available ? 'available' : 'taken'}`);
-            } else {
-              console.warn(`WHOIS API failed for ${altDomain}, assuming available`);
-            }
-          } else {
-            // Fallback: Don't check availability - let user verify manually
-            console.warn('No WHOIS key - alternative domains show as unchecked');
-            available = undefined as any; // Mark as unchecked
-          }
-        } catch (error) {
-          console.warn(`Failed to check ${altDomain}, assuming available:`, error);
-        }
-
-        return {
-          domain: altDomain,
-          available,
-          score: this.calculateAlternativeScore(altDomain, domain),
-          reason: this.getAlternativeReason(altDomain, domain),
-          pricing: this.getDomainPricing(altDomain)
-        };
-      });
-
-    const checkedAlternatives = await Promise.all(checkedAlternativesPromises);
-
-    // Add unchecked alternatives (user can click "Check" button to verify)
-    const uncheckedAlternatives = uncheckedExtensions
+    // Return all alternatives as unchecked (user clicks "Check" button to verify)
+    const uncheckedAlternatives = allExtensions
       .map(ext => baseDomain + ext)
       .filter(altDomain => altDomain !== domain)
       .map(altDomain => ({
         domain: altDomain,
-        available: undefined, // Unchecked - user must click to verify
+        available: undefined, // Unchecked - user must click to verify with WHOIS
         score: this.calculateAlternativeScore(altDomain, domain),
         reason: this.getAlternativeReason(altDomain, domain),
         pricing: this.getDomainPricing(altDomain)
       }));
 
-    // Combine checked and unchecked alternatives
-    const allAlternatives = [...checkedAlternatives, ...uncheckedAlternatives];
+    console.log(`Returning ${uncheckedAlternatives.length} unchecked alternatives for on-demand verification`);
 
     // Sort by score and return
-    return allAlternatives
+    return uncheckedAlternatives
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
   }
