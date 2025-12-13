@@ -50,6 +50,13 @@ export const affiliate = {
 
   spaceship(domain: string, affiliateId: string) {
     return `https://spaceship.com/domains/register?domain=${domain}&affid=${affiliateId}&utm_source=brandvalidator&utm_medium=affiliate&utm_campaign=domain`;
+  },
+
+  hootsuite(affiliateId: string) {
+    // Hootsuite affiliate link via Impact
+    // Once approved, you'll get a specific Impact tracking URL
+    // For now, using generic plans page with UTM tracking
+    return `https://www.hootsuite.com/plans?utm_source=brandvalidator&utm_medium=affiliate&utm_campaign=social&ref=${affiliateId}`;
   }
 };
 
@@ -61,6 +68,7 @@ export interface AffiliateConfig {
   logoai: string;
   zoviz: string;
   logome: string;
+  hootsuite: string;
 }
 
 export class AffiliateService {
