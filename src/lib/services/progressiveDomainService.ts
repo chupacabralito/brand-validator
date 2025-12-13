@@ -251,7 +251,7 @@ export class ProgressiveDomainService {
   private async checkDNSRecord(domain: string, type: 'MX' | 'NS' | 'TXT'): Promise<boolean> {
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=${type}`, {
-        signal: AbortSignal.timeout(2000)
+        signal: AbortSignal.timeout(800) // Reduced from 2000ms to 800ms
       });
 
       if (!response.ok) return false;
@@ -270,7 +270,7 @@ export class ProgressiveDomainService {
         try {
           const response = await fetch(`${protocol}://${domain}`, {
             method: 'HEAD',
-            signal: AbortSignal.timeout(3000),
+            signal: AbortSignal.timeout(1000), // Reduced from 3000ms to 1000ms
             redirect: 'manual' // Don't follow redirects
           });
 
@@ -290,7 +290,7 @@ export class ProgressiveDomainService {
     // Use DNS SOA record to estimate age (simplified)
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=SOA`, {
-        signal: AbortSignal.timeout(2000)
+        signal: AbortSignal.timeout(800) // Reduced from 2000ms to 800ms
       });
 
       if (!response.ok) return null;
