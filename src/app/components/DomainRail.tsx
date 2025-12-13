@@ -41,7 +41,7 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
     setCheckingDomains(prev => new Set(prev).add(domain));
 
     try {
-      const response = await fetch('/api/domain-check', {
+      const response = await fetch('/api/domain-check-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain })
