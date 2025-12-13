@@ -236,7 +236,7 @@ export class ProgressiveDomainService {
   private async quickDNSCheck(domain: string): Promise<boolean> {
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`, {
-        signal: AbortSignal.timeout(1000) // Very fast timeout
+        signal: AbortSignal.timeout(500) // Ultra-fast timeout for instant results
       });
 
       if (!response.ok) return false;
