@@ -339,15 +339,15 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
             key={index}
             className="p-3 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors bg-gray-800/30"
           >
-            {/* Main Row */}
-            <div className="flex items-center justify-between gap-3">
-              {/* Platform Info */}
+            {/* First Row - Platform Info and Status */}
+            <div className="flex items-center justify-between gap-3 mb-2">
+              {/* Platform Icon and Name */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={`w-6 h-6 flex-shrink-0 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
                   {getPlatformIcon(platform.platform)}
                 </div>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm text-white capitalize font-medium truncate">{platform.platform}</span>
+                  <span className="text-sm text-white capitalize font-medium">{platform.platform}</span>
                   {/* Status dot indicator - matching domain check pattern */}
                   <span className={`inline-block w-2 h-2 rounded-full ${
                     platform.available ? 'bg-green-400' : 'bg-red-400'
@@ -355,36 +355,37 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
                 </div>
               </div>
 
-              {/* Status badge and Action Button */}
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
-                  platform.available
-                    ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                    : 'bg-red-600/20 text-red-400 border border-red-600/30'
-                }`}>
-                  {platform.available ? 'Available' : 'Taken'}
-                </span>
+              {/* Status badge */}
+              <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
+                platform.available
+                  ? 'bg-green-600/20 text-green-400 border border-green-600/30'
+                  : 'bg-red-600/20 text-red-400 border border-red-600/30'
+              }`}>
+                {platform.available ? 'Available' : 'Taken'}
+              </span>
+            </div>
 
-                {platform.available ? (
-                  <a
-                    href={getRegistrationUrl(platform.platform)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors whitespace-nowrap flex-shrink-0"
-                  >
-                    Claim →
-                  </a>
-                ) : (
-                  <a
-                    href={platform.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors whitespace-nowrap flex-shrink-0"
-                  >
-                    View →
-                  </a>
-                )}
-              </div>
+            {/* Second Row - Action Button */}
+            <div className="flex">
+              {platform.available ? (
+                <a
+                  href={getRegistrationUrl(platform.platform)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors text-center"
+                >
+                  Claim →
+                </a>
+              ) : (
+                <a
+                  href={platform.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors text-center"
+                >
+                  View →
+                </a>
+              )}
             </div>
           </div>
         ))}
