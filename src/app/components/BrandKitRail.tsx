@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BrandKit, BrandTone } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
+import { InfoBox } from './design-system';
 
 interface BrandKitRailProps {
   brandKit: BrandKit | null;
@@ -222,9 +223,11 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
           {/* Logo Concept */}
           <div>
             <h3 className="font-semibold text-white text-sm mb-2">Logo Concept</h3>
-            <p className="text-xs text-gray-300 bg-gray-800/50 rounded p-3 border border-gray-700">
-              {currentTone.logoPrompt}
-            </p>
+            <InfoBox variant="neutral">
+              <p className="text-xs text-gray-300">
+                {currentTone.logoPrompt}
+              </p>
+            </InfoBox>
           </div>
 
           {/* Colors */}

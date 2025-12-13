@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TrademarkSearchResult, TrademarkMatch, NextStep, BusinessCategory, CategoryRisk } from '@/lib/services/trademarkSearch';
 import StandardContainer from './StandardContainer';
 import AffiliateCTA, { Partner } from './AffiliateCTA';
+import { StatusDot, StatusBadge, ItemCard, InfoBox, ExpandButton } from './design-system';
 
 interface TrademarkSearchResultsProps {
   result: TrademarkSearchResult | null;
@@ -293,30 +294,29 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
       )}
 
       {/* Domain Safety Summary */}
-      <div className={`mb-4 p-3 rounded-lg border ${
-        riskLevel === 'low' ? 'bg-green-900/20 border-green-600/30' :
-        riskLevel === 'medium' ? 'bg-yellow-900/20 border-yellow-600/30' :
-        'bg-red-900/20 border-red-600/30'
-      }`}>
+      <InfoBox
+        variant={riskLevel === 'low' ? 'success' : riskLevel === 'medium' ? 'warning' : 'danger'}
+        className="mb-4"
+      >
         <div className="flex items-start gap-2">
           <div className="flex-1">
             <h3 className="font-semibold mb-1 text-white text-sm">
-              {riskLevel === 'low' && '✅ Safe to use this domain'}
-              {riskLevel === 'medium' && '⚠️ Verify before purchasing'}
-              {riskLevel === 'high' && '🛑 High trademark risk - avoid this domain'}
+              {riskLevel === 'low' && 'Safe to use this domain'}
+              {riskLevel === 'medium' && 'Verify before purchasing'}
+              {riskLevel === 'high' && 'High trademark risk - avoid this domain'}
             </h3>
             <p className={`text-xs ${riskLevel === 'low' ? 'text-green-300' : riskLevel === 'medium' ? 'text-yellow-300' : 'text-red-300'}`}>
               {result.riskAssessment.recommendations[0]}
             </p>
           </div>
         </div>
-      </div>
+      </InfoBox>
 
       {/* Risk Factors - Only show if there are actual concerns */}
       {result.riskAssessment.riskFactors.length > 0 && riskLevel !== 'low' && (
         <div className="mb-4">
           <h3 className="font-semibold mb-2 text-white text-sm">Why This Matters</h3>
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+          <InfoBox variant="neutral">
             <ul className="text-xs text-gray-300 space-y-1">
               {result.riskAssessment.riskFactors.map((riskFactor, riskIndex) => (
                 <li key={riskIndex} className="flex items-start">
@@ -325,7 +325,7 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
                 </li>
               ))}
             </ul>
-          </div>
+          </InfoBox>
         </div>
       )}
 
@@ -339,33 +339,31 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
             <div className="mb-3">
               <div className="space-y-2">
                 {(showAllMatches ? result.exactMatches : result.exactMatches.slice(0, 3)).map((match, index) => (
-                  <div key={index} className="border border-red-600/30 rounded p-3 bg-red-900/20">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium text-red-300 text-sm">⚠️ {match.mark}</span>
-                      <span className="px-2 py-0.5 rounded text-xs bg-red-600/20 text-red-400 border border-red-600/30">
-                        HIGH RISK
-                      </span>
+                  <ItemCard key={index} accentColor="danger">
+                    <StatusDot status="danger" className="mt-1.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-medium text-white text-sm truncate">{match.mark}</span>
+                        <StatusBadge status="danger" label="High risk" />
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        <p><span className="font-medium text-gray-300">Owner:</span> {match.owner}</p>
+                        {match.notes && <p className="mt-1 text-gray-300">{match.notes}</p>}
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-300">
-                      <p><span className="font-medium">Owner:</span> {match.owner}</p>
-                      {match.notes && <p className="mt-1 text-red-300">{match.notes}</p>}
-                    </div>
-                  </div>
+                  </ItemCard>
                 ))}
               </div>
 
               {/* Show More button if there are more than 3 exact matches */}
               {result.exactMatches.length > 3 && (
-                <button
+                <ExpandButton
+                  expanded={showAllMatches}
                   onClick={() => setShowAllMatches(!showAllMatches)}
-                  className="mt-3 w-full text-xs text-gray-400 hover:text-gray-300 py-2 px-3 rounded-lg border border-gray-700 hover:border-gray-600 bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
-                >
-                  {showAllMatches ? (
-                    <>Hide {result.exactMatches.length - 3} additional conflicts</>
-                  ) : (
-                    <>Show {result.exactMatches.length - 3} more conflicts</>
-                  )}
-                </button>
+                  expandedCount={result.exactMatches.length - 3}
+                  collapsedLabel={`Show ${result.exactMatches.length - 3} more conflicts`}
+                  expandedLabel={`Hide ${result.exactMatches.length - 3} additional conflicts`}
+                />
               )}
             </div>
           )}
@@ -378,33 +376,31 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
                   ? result.similarMatches.filter(m => m.similarityScore >= 80)
                   : result.similarMatches.filter(m => m.similarityScore >= 80).slice(0, 3)
                 ).map((match, index) => (
-                  <div key={index} className="border border-yellow-600/30 rounded p-3 bg-yellow-900/20">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium text-yellow-300 text-sm">{match.mark}</span>
-                      <span className="px-2 py-0.5 rounded text-xs bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
-                        SIMILAR
-                      </span>
+                  <ItemCard key={index} accentColor="warning">
+                    <StatusDot status="warning" className="mt-1.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-medium text-white text-sm truncate">{match.mark}</span>
+                        <StatusBadge status="warning" label="Similar" />
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        <p><span className="font-medium text-gray-300">Owner:</span> {match.owner}</p>
+                        {match.notes && <p className="mt-1 text-gray-300">{match.notes}</p>}
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-300">
-                      <p><span className="font-medium">Owner:</span> {match.owner}</p>
-                      {match.notes && <p className="mt-1 text-yellow-300">{match.notes}</p>}
-                    </div>
-                  </div>
+                  </ItemCard>
                 ))}
               </div>
 
               {/* Show More button if there are more than 3 similar matches */}
               {result.similarMatches.filter(m => m.similarityScore >= 80).length > 3 && (
-                <button
+                <ExpandButton
+                  expanded={showAllMatches}
                   onClick={() => setShowAllMatches(!showAllMatches)}
-                  className="mt-3 w-full text-xs text-gray-400 hover:text-gray-300 py-2 px-3 rounded-lg border border-gray-700 hover:border-gray-600 bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
-                >
-                  {showAllMatches ? (
-                    <>Hide additional similar matches</>
-                  ) : (
-                    <>Show {result.similarMatches.filter(m => m.similarityScore >= 80).length - 3} more similar matches</>
-                  )}
-                </button>
+                  expandedCount={result.similarMatches.filter(m => m.similarityScore >= 80).length - 3}
+                  collapsedLabel={`Show ${result.similarMatches.filter(m => m.similarityScore >= 80).length - 3} more similar matches`}
+                  expandedLabel="Hide additional similar matches"
+                />
               )}
             </div>
           )}

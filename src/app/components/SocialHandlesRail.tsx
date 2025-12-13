@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SocialCheckResult } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 import AffiliateCTA, { Partner } from './AffiliateCTA';
+import { StatusDot, StatusBadge, ItemCard, ExpandButton } from './design-system';
 
 interface SocialHandlesRailProps {
   socialResult: SocialCheckResult | null;
@@ -335,80 +336,59 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
       {/* Simplified Platform List */}
       <div className="space-y-2">
         {visiblePlatforms.map((platform, index) => (
-          <div
-            key={index}
-            className="p-3 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors bg-gray-800/30"
-          >
-            {/* First Row - Platform Info and Status */}
-            <div className="flex items-center justify-between gap-3 mb-2">
-              {/* Platform Icon and Name */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`w-6 h-6 flex-shrink-0 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
-                  {getPlatformIcon(platform.platform)}
-                </div>
+          <ItemCard key={index}>
+            <div className={`w-6 h-6 flex-shrink-0 flex items-center justify-center mt-0.5 ${getPlatformColor(platform.platform)}`}>
+              {getPlatformIcon(platform.platform)}
+            </div>
+            <div className="flex-1 min-w-0">
+              {/* First Row - Platform Info and Status */}
+              <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-sm text-white capitalize font-medium">{platform.platform}</span>
-                  {/* Status dot indicator - matching domain check pattern */}
-                  <span className={`inline-block w-2 h-2 rounded-full ${
-                    platform.available ? 'bg-green-400' : 'bg-red-400'
-                  }`} />
+                  <StatusDot status={platform.available ? 'success' : 'danger'} />
                 </div>
+                <StatusBadge
+                  status={platform.available ? 'success' : 'danger'}
+                  label={platform.available ? 'Available' : 'Taken'}
+                />
               </div>
 
-              {/* Status badge */}
-              <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
-                platform.available
-                  ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                  : 'bg-red-600/20 text-red-400 border border-red-600/30'
-              }`}>
-                {platform.available ? 'Available' : 'Taken'}
-              </span>
+              {/* Second Row - Action Button */}
+              <div className="flex">
+                {platform.available ? (
+                  <a
+                    href={getRegistrationUrl(platform.platform)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors text-center"
+                  >
+                    Claim →
+                  </a>
+                ) : (
+                  <a
+                    href={platform.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors text-center"
+                  >
+                    View →
+                  </a>
+                )}
+              </div>
             </div>
-
-            {/* Second Row - Action Button */}
-            <div className="flex">
-              {platform.available ? (
-                <a
-                  href={getRegistrationUrl(platform.platform)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors text-center"
-                >
-                  Claim →
-                </a>
-              ) : (
-                <a
-                  href={platform.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors text-center"
-                >
-                  View →
-                </a>
-              )}
-            </div>
-          </div>
+          </ItemCard>
         ))}
       </div>
 
-      {/* Show More Button */}
-      {!showAllPlatforms && hiddenCount > 0 && (
-        <button
-          onClick={() => setShowAllPlatforms(true)}
-          className="mt-3 w-full px-3 py-2 bg-gray-800/50 text-gray-400 border border-gray-700/50 rounded text-xs hover:bg-gray-700/50 hover:text-gray-300 transition-colors"
-        >
-          Show {hiddenCount} more platform{hiddenCount !== 1 ? 's' : ''}...
-        </button>
-      )}
-
-      {/* Show Less Button */}
-      {showAllPlatforms && hiddenCount > 0 && (
-        <button
-          onClick={() => setShowAllPlatforms(false)}
-          className="mt-3 w-full px-3 py-2 bg-gray-800/50 text-gray-400 border border-gray-700/50 rounded text-xs hover:bg-gray-700/50 hover:text-gray-300 transition-colors"
-        >
-          Show less...
-        </button>
+      {/* Show More/Less Button */}
+      {hiddenCount > 0 && (
+        <ExpandButton
+          expanded={showAllPlatforms}
+          onClick={() => setShowAllPlatforms(!showAllPlatforms)}
+          expandedCount={hiddenCount}
+          collapsedLabel={`Show ${hiddenCount} more platform${hiddenCount !== 1 ? 's' : ''}`}
+          expandedLabel="Show less"
+        />
       )}
     </StandardContainer>
   );

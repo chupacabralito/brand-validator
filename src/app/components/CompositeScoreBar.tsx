@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CompositeScoreResult } from '@/lib/services/compositeScore';
+import { InfoBox } from './design-system';
 
 interface CompositeScoreBarProps {
   compositeResult: CompositeScoreResult | null;
@@ -133,7 +134,7 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
       {showBreakdown && (
         <div className="mt-4 pt-4 border-t border-gray-700 space-y-4">
           {/* Calculation Explanation */}
-          <div className="bg-indigo-900/20 rounded-lg p-3 border border-indigo-600/30">
+          <InfoBox variant="info">
             <p className="text-xs text-indigo-300 mb-1">
               <span className="font-semibold">Overall Score Calculation:</span>
             </p>
@@ -143,7 +144,7 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
               Trademark ({compositeResult.breakdown.trademark.score}) × {compositeResult.breakdown.trademark.weight * 100}% +
               Name Quality ({compositeResult.breakdown.brand.score}) × {compositeResult.breakdown.brand.weight * 100}% = <span className="font-semibold text-indigo-300">{compositeResult.overallScore}</span>
             </p>
-          </div>
+          </InfoBox>
 
           {/* Component Scores Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
