@@ -4,10 +4,18 @@ import { SocialHandleHeuristics } from './socialHeuristics';
 type SocialPlatform = "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord" | "threads" | "reddit" | "twitch" | "medium" | "github";
 
 // Zyla API response interfaces
+interface ZylaDebugInfo {
+  status_code?: number;
+  early_detection?: string;
+  final_url?: string;
+  is_available?: boolean;
+}
+
 interface ZylaSocialMedia {
   is_available: boolean;
   name: string;
   url: string;
+  debug_info?: ZylaDebugInfo;
 }
 
 interface ZylaResponse {
@@ -131,6 +139,31 @@ export class SocialService {
           if (platformData.is_available === null || platformData.is_available === undefined) {
             console.error(`Zyla API ${platform} returned null availability`);
             return null;
+          }
+
+          // Check debug_info for reliability issues
+          if (platformData.debug_info) {
+            const statusCode = platformData.debug_info.status_code;
+            const earlyDetection = platformData.debug_info.early_detection;
+
+            // Reject rate-limited responses (429)
+            if (statusCode === 429) {
+              console.warn(`Zyla API ${platform} rate limited (429) - falling back to heuristics`);
+              return null;
+            }
+
+            // Reject server errors (5xx)
+            if (statusCode && statusCode >= 500) {
+              console.warn(`Zyla API ${platform} server error (${statusCode}) - falling back to heuristics`);
+              return null;
+            }
+
+            // Reject unreliable "login redirect" detection
+            // Login redirects don't mean the account exists - platforms redirect for privacy
+            if (earlyDetection === 'redirected_to_login_account_exists') {
+              console.warn(`Zyla API ${platform} using unreliable login redirect heuristic - falling back to our heuristics`);
+              return null;
+            }
           }
 
           return {
