@@ -539,16 +539,33 @@ REASON: [one sentence explanation]`,
     // Add the AI reasoning as the primary factor
     factors.push(reasoning);
 
-    // Add contextual factors based on length
-    const length = brandName.length;
-    if (length <= 6) {
-      factors.push('Very short name - easy to remember');
-    } else if (length <= 8) {
-      factors.push('Short name - good for branding');
-    } else if (length <= 12) {
-      factors.push('Moderate length - acceptable');
+    // Add contextual interpretation based on score and reasoning
+    const isExistingBrand = reasoning.toLowerCase().includes('existing') ||
+                           reasoning.toLowerCase().includes('mega-brand') ||
+                           reasoning.toLowerCase().includes('well-known brand');
+
+    if (score >= 90) {
+      factors.push('Highly brandable name with strong market potential');
+    } else if (score >= 70) {
+      factors.push('Solid brand name with good commercial viability');
+    } else if (score >= 50) {
+      factors.push('Acceptable brand name but may face recognition challenges');
+    } else if (isExistingBrand) {
+      // Low score due to existing brand - clarify this is about availability, not quality
+      factors.push('Cannot be used due to existing trademark ownership');
     } else {
-      factors.push('Longer name - may be harder to remember');
+      // Actually a weak name quality
+      factors.push('Poor linguistic quality - consider alternative names');
+    }
+
+    // Add length context only if it's relevant (not for existing brands)
+    if (!isExistingBrand) {
+      const length = brandName.length;
+      if (length <= 6) {
+        factors.push('Very short - memorable and easy to type');
+      } else if (length > 15) {
+        factors.push('Long name - may reduce memorability');
+      }
     }
 
     return { score, factors };
@@ -569,7 +586,7 @@ REASON: [one sentence explanation]`,
     brandScore: any
   ): string {
     const recommendation = this.getRecommendation(overallScore);
-    
+
     const strengths = [];
     const weaknesses = [];
 
@@ -582,15 +599,29 @@ REASON: [one sentence explanation]`,
     if (trademarkScore.score >= 80) strengths.push('low trademark risk');
     else if (trademarkScore.score < 50) weaknesses.push('high trademark risk');
 
-    if (brandScore.score >= 80) strengths.push('strong brand name');
-    else if (brandScore.score < 50) weaknesses.push('weak brand name');
+    // Brand name handling - check reasoning to differentiate existing brands from weak names
+    const brandReasoning = brandScore.factors?.[0] || '';
+    const isExistingBrand = brandReasoning.toLowerCase().includes('existing') ||
+                           brandReasoning.toLowerCase().includes('mega-brand') ||
+                           brandReasoning.toLowerCase().includes('well-known brand');
+
+    if (brandScore.score >= 80) {
+      strengths.push('strong brand name');
+    } else if (brandScore.score < 50) {
+      // Differentiate between existing strong brands vs actually weak names
+      if (isExistingBrand) {
+        weaknesses.push('name already used by existing brand (unavailable)');
+      } else {
+        weaknesses.push('weak brand name quality');
+      }
+    }
 
     let summary = `Overall brand strength: ${overallScore}/100 (${recommendation}). `;
-    
+
     if (strengths.length > 0) {
       summary += `Strengths: ${strengths.join(', ')}. `;
     }
-    
+
     if (weaknesses.length > 0) {
       summary += `Areas for improvement: ${weaknesses.join(', ')}.`;
     }
