@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         alternates: (domainResult.alternatives || []).map(alt => ({
           domain: alt.domain,
           available: alt.available,
-          status: alt.available ? 'available' as const : 'taken' as const,
+          status: alt.available === undefined ? undefined : (alt.available ? 'available' as const : 'taken' as const),
           score: alt.score
         })),
         dnsHistoryFlag: domainResult.available ? undefined : 'unknown' as const,
