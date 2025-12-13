@@ -371,6 +371,9 @@ export class TrademarkSearchService {
         }
       }
 
+      // Create user-friendly notes (no API metadata)
+      const notes = this.generateUserFriendlyNotes(status, tm.filing_date);
+
       const match: TrademarkMatch = {
         mark: tm.keyword,
         owner: ownerName,
@@ -381,14 +384,124 @@ export class TrademarkSearchService {
         classes,
         similarityScore,
         riskLevel,
-        notes: `Found via Zyla Trademark API - ${status}`
+        notes
       };
 
       matches.push(match);
     }
 
-    // Sort by similarity score (highest first)
-    return matches.sort((a, b) => b.similarityScore - a.similarityScore);
+    // Sort by similarity score (highest first) then deduplicate
+    const sortedMatches = matches.sort((a, b) => b.similarityScore - a.similarityScore);
+    return this.deduplicateTrademarkMatches(sortedMatches);
+  }
+
+  /**
+   * Generate user-friendly notes without API implementation details
+   */
+  private generateUserFriendlyNotes(status: string, filingDate?: string): string {
+    const statusLower = status.toLowerCase();
+
+    if (statusLower.includes('registered') || statusLower.includes('live')) {
+      const year = filingDate ? new Date(filingDate).getFullYear() : null;
+      return year ? `Active trademark (registered ${year})` : 'Active registered trademark';
+    }
+
+    if (statusLower.includes('pending')) {
+      return 'Trademark application pending';
+    }
+
+    if (statusLower.includes('published')) {
+      return 'Published for opposition';
+    }
+
+    return 'Active trademark';
+  }
+
+  /**
+   * Deduplicate trademark matches by grouping identical marks from the same owner
+   * Aggregates multiple registrations (different classes/dates) into a single entry
+   */
+  private deduplicateTrademarkMatches(matches: TrademarkMatch[]): TrademarkMatch[] {
+    const grouped = new Map<string, TrademarkMatch[]>();
+
+    // Group by owner + mark (case-insensitive)
+    for (const match of matches) {
+      const key = `${match.owner.toLowerCase()}-${match.mark.toLowerCase()}`;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(match);
+    }
+
+    const deduplicated: TrademarkMatch[] = [];
+
+    // Merge grouped matches
+    for (const [key, group] of grouped.entries()) {
+      if (group.length === 1) {
+        // Single registration - use as-is
+        deduplicated.push(group[0]);
+      } else {
+        // Multiple registrations - aggregate data
+        const merged = this.mergeTrademarkMatches(group);
+        deduplicated.push(merged);
+      }
+    }
+
+    return deduplicated;
+  }
+
+  /**
+   * Merge multiple trademark registrations into a single entry
+   */
+  private mergeTrademarkMatches(matches: TrademarkMatch[]): TrademarkMatch {
+    // Use the first match as the base
+    const base = matches[0];
+
+    // Aggregate all unique classes
+    const allClasses = new Set<number>();
+    matches.forEach(m => m.classes.forEach(c => allClasses.add(c)));
+
+    // Aggregate all goods and services
+    const allGoodsAndServices = new Set<string>();
+    matches.forEach(m => m.goodsAndServices.forEach(g => allGoodsAndServices.add(g)));
+
+    // Find the earliest filing date
+    const earliestDate = matches
+      .map(m => m.filingDate)
+      .filter(d => d)
+      .sort()[0];
+
+    // Use the highest risk level
+    const riskLevels: ('low' | 'medium' | 'high')[] = ['low', 'medium', 'high'];
+    const highestRisk = matches
+      .map(m => m.riskLevel)
+      .reduce((highest, current) =>
+        riskLevels.indexOf(current) > riskLevels.indexOf(highest) ? current : highest
+      , 'low');
+
+    // Use the highest similarity score
+    const highestSimilarity = Math.max(...matches.map(m => m.similarityScore));
+
+    // Generate aggregated notes
+    const count = matches.length;
+    const year = earliestDate ? new Date(earliestDate).getFullYear() : null;
+    const notes = year
+      ? `Active trademark (${count} registrations since ${year})`
+      : `Active trademark (${count} registrations)`;
+
+    return {
+      mark: base.mark,
+      owner: base.owner,
+      status: base.status,
+      registrationNumber: earliestDate ? matches.find(m => m.filingDate === earliestDate)?.registrationNumber : base.registrationNumber,
+      filingDate: earliestDate || base.filingDate,
+      goodsAndServices: Array.from(allGoodsAndServices),
+      classes: Array.from(allClasses).sort((a, b) => a - b),
+      similarityScore: highestSimilarity,
+      riskLevel: highestRisk,
+      notes
+    };
   }
 
   /**
@@ -533,6 +646,9 @@ export class TrademarkSearchService {
         }
       }
 
+      // Create user-friendly notes (no API metadata)
+      const notes = this.generateUserFriendlyNotes(tm.status || 'Unknown', tm.filingdate);
+
       const match: TrademarkMatch = {
         mark: tm.wordmark, // Official API uses 'wordmark'
         owner: tm.owner || 'Unknown',
@@ -543,14 +659,15 @@ export class TrademarkSearchService {
         classes,
         similarityScore,
         riskLevel,
-        notes: `Found via Marker API - ${tm.status || 'Status unknown'}`
+        notes
       };
 
       matches.push(match);
     }
 
-    // Sort by similarity score (highest first)
-    return matches.sort((a, b) => b.similarityScore - a.similarityScore);
+    // Sort by similarity score (highest first) then deduplicate
+    const sortedMatches = matches.sort((a, b) => b.similarityScore - a.similarityScore);
+    return this.deduplicateTrademarkMatches(sortedMatches);
   }
 
   private async searchUSPTOAPI(brandName: string): Promise<TrademarkMatch[]> {
@@ -637,6 +754,9 @@ export class TrademarkSearchService {
     try {
       if (data.response && data.response.docs) {
         for (const doc of data.response.docs) {
+          const similarityScore = this.calculateSimilarity(brandName, doc.markLiteralText || doc.markText || '');
+          const notes = this.generateUserFriendlyNotes(doc.markStatus || 'Unknown', doc.filingDate || doc.registrationDate);
+
           const match: TrademarkMatch = {
             mark: doc.markLiteralText || doc.markText || 'Unknown',
             owner: doc.ownerName || 'Unknown',
@@ -645,9 +765,9 @@ export class TrademarkSearchService {
             filingDate: doc.filingDate || doc.registrationDate || 'Unknown',
             goodsAndServices: doc.goodsAndServices || [],
             classes: doc.niceClasses || [],
-            similarityScore: this.calculateSimilarity(brandName, doc.markLiteralText || doc.markText || ''),
-            riskLevel: this.calculateRiskLevel(this.calculateSimilarity(brandName, doc.markLiteralText || doc.markText || '')),
-            notes: `Found via USPTO API - ${doc.markStatus || 'Status unknown'}`
+            similarityScore,
+            riskLevel: this.calculateRiskLevel(similarityScore),
+            notes
           };
           matches.push(match);
         }
@@ -834,7 +954,7 @@ export class TrademarkSearchService {
         goodsAndServices: brand.goods,
         classes: brand.classes,
         similarityScore: 100,
-        notes: `This is a well-known brand name owned by ${brand.owner}. High conflict risk - likely trademarked across multiple classes.`
+        notes: `Well-known brand owned by ${brand.owner} - trademarked across multiple classes`
       };
     }
 
@@ -1025,7 +1145,7 @@ export class TrademarkSearchService {
           classes: riskAssessment.classes,
           similarityScore: riskAssessment.similarityScore,
           riskLevel: 'high' as const,
-          notes: `⚠️ DOMAIN RISK: ${riskAssessment.notes} Using this domain could lead to trademark infringement claims. Consider a different domain.`
+          notes: riskAssessment.notes // Already user-friendly from assessTrademarkRisk
         });
       }
 
