@@ -346,43 +346,45 @@ export default function SocialHandlesRail({ socialResult, isLoading, onAffiliate
                 <div className={`w-6 h-6 flex-shrink-0 flex items-center justify-center ${getPlatformColor(platform.platform)}`}>
                   {getPlatformIcon(platform.platform)}
                 </div>
-                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white capitalize font-medium truncate">{platform.platform}</span>
-                    {platform.available ? (
-                      <span className="text-xs text-green-400 flex-shrink-0">✓</span>
-                    ) : (
-                      <span className="text-xs text-red-400 flex-shrink-0">✗</span>
-                    )}
-                  </div>
-                  {platform.confidence !== undefined && (
-                    <span className="text-xs text-gray-400">
-                      {platform.confidence}% confidence
-                    </span>
-                  )}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-sm text-white capitalize font-medium truncate">{platform.platform}</span>
+                  {/* Status dot indicator - matching domain check pattern */}
+                  <span className={`inline-block w-2 h-2 rounded-full ${
+                    platform.available ? 'bg-green-400' : 'bg-red-400'
+                  }`} />
                 </div>
               </div>
 
-              {/* Action Button */}
-              {platform.available ? (
-                <a
-                  href={getRegistrationUrl(platform.platform)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors whitespace-nowrap flex-shrink-0"
-                >
-                  Claim →
-                </a>
-              ) : (
-                <a
-                  href={platform.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors whitespace-nowrap flex-shrink-0"
-                >
-                  View →
-                </a>
-              )}
+              {/* Status badge and Action Button */}
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 text-xs rounded-full font-medium whitespace-nowrap ${
+                  platform.available
+                    ? 'bg-green-600/20 text-green-400 border border-green-600/30'
+                    : 'bg-red-600/20 text-red-400 border border-red-600/30'
+                }`}>
+                  {platform.available ? 'Available' : 'Taken'}
+                </span>
+
+                {platform.available ? (
+                  <a
+                    href={getRegistrationUrl(platform.platform)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors whitespace-nowrap flex-shrink-0"
+                  >
+                    Claim →
+                  </a>
+                ) : (
+                  <a
+                    href={platform.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-gray-700/50 text-gray-400 text-xs font-medium rounded hover:bg-gray-700 transition-colors whitespace-nowrap flex-shrink-0"
+                  >
+                    View →
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         ))}
