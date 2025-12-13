@@ -290,12 +290,41 @@ export class DomainService {
     const baseDomain = domain.replace(/\.(com|net|org|co|io|app|dev|tech)$/, '');
     const extensions = ['.net', '.org', '.io', '.co'];
 
-    // Check availability for each alternative in parallel
+    // Check availability for each alternative in parallel using WHOIS API (accurate)
     const alternativePromises = extensions
       .map(ext => baseDomain + ext)
       .filter(altDomain => altDomain !== domain)
       .map(async (altDomain) => {
-        const available = await this.quickDNSCheck(altDomain);
+        let available = true; // Default to available if check fails
+
+        try {
+          if (this.whoisApiKey) {
+            // Use WHOIS API for accurate results
+            const whoisApiUrl = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${this.whoisApiKey}&domainName=${altDomain}&outputFormat=JSON`;
+            const response = await fetch(whoisApiUrl, {
+              headers: {
+                'User-Agent': 'BrandValidator/1.0',
+                'Accept': 'application/json'
+              },
+              signal: AbortSignal.timeout(10000) // 10 second timeout per alternative
+            });
+
+            if (response.ok) {
+              const whoisData = await response.json();
+              available = this.parseRealWHOISData(whoisData);
+              console.log(`WHOIS check for ${altDomain}: ${available ? 'available' : 'taken'}`);
+            } else {
+              console.warn(`WHOIS API failed for ${altDomain}, assuming available`);
+            }
+          } else {
+            // Fallback: Don't check availability - let user verify manually
+            console.warn('No WHOIS key - alternative domains show as unchecked');
+            available = undefined as any; // Mark as unchecked
+          }
+        } catch (error) {
+          console.warn(`Failed to check ${altDomain}, assuming available:`, error);
+        }
+
         return {
           domain: altDomain,
           available,
