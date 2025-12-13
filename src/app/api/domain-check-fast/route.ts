@@ -47,9 +47,8 @@ export async function POST(request: NextRequest) {
       const baseName = domain;
       const primaryDomain = baseName + '.com';
 
-      // Check the .com domain
+      // ULTRA-FAST: Only use Layer 1 (skip Layer 2 for speed)
       const layer1 = await service.verifyLayer1(primaryDomain);
-      const layer2 = await service.verifyLayer2(primaryDomain, layer1);
 
       // Generate alternatives for other TLDs
       const alternates = ['.net', '.org', '.io', '.co'].map(ext => ({
@@ -65,27 +64,24 @@ export async function POST(request: NextRequest) {
         query: primaryDomain,
         root: baseName,
         tld: '.com',
-        available: layer2.available,
-        status: layer2.available ? 'available' as const : 'taken' as const,
-        confidence: layer2.confidence,
-        verificationLayer: 2,
-        evidence: layer2.evidence,
+        available: layer1.available,
+        status: layer1.available ? 'available' as const : 'taken' as const,
+        confidence: layer1.confidence,
+        verificationLayer: 1, // Layer 1 only for speed
+        evidence: layer1.evidence,
         alternates,
-        pricing: layer2.pricing,
-        registrar: layer2.registrar,
-        registrationDate: layer2.registrationDate,
-        expirationDate: layer2.expirationDate,
-        lastChecked: layer2.completedAt,
+        pricing: layer1.pricing,
+        registrar: layer1.registrar,
+        registrationDate: layer1.registrationDate,
+        expirationDate: layer1.expirationDate,
+        lastChecked: layer1.completedAt,
         responseTime: `${responseTime}ms`,
-        note: layer2.confidence < 95
-          ? 'Fast verification (80-95% confidence). For 100% authoritative result, use /api/domain-check-stream'
-          : 'High-confidence result from comprehensive DNS verification'
+        note: 'Ultra-fast Layer 1 verification (60-85% confidence)'
       });
     }
 
-    // Complete domain with TLD
+    // Complete domain with TLD - ULTRA-FAST: Only use Layer 1
     const layer1 = await service.verifyLayer1(domain);
-    const layer2 = await service.verifyLayer2(domain, layer1);
 
     // Generate alternatives (unchecked)
     const baseDomain = domain.replace(/\.(com|net|org|co|io|app|dev|tech)$/, '');
@@ -112,26 +108,24 @@ export async function POST(request: NextRequest) {
 
     const responseTime = Date.now() - startTime;
 
-    // Format response to match existing API
+    // Format response to match existing API (Layer 1 only)
     const result = {
       query: domain,
       root: domain.split('.')[0],
       tld: '.' + domain.split('.').slice(1).join('.'),
-      available: layer2.available,
-      status: layer2.available ? 'available' as const : 'taken' as const,
-      confidence: layer2.confidence,
-      verificationLayer: 2,
-      evidence: layer2.evidence,
+      available: layer1.available,
+      status: layer1.available ? 'available' as const : 'taken' as const,
+      confidence: layer1.confidence,
+      verificationLayer: 1, // Layer 1 only for ultra-fast speed
+      evidence: layer1.evidence,
       alternates,
-      pricing: layer2.pricing,
-      registrar: layer2.registrar,
-      registrationDate: layer2.registrationDate,
-      expirationDate: layer2.expirationDate,
-      lastChecked: layer2.completedAt,
+      pricing: layer1.pricing,
+      registrar: layer1.registrar,
+      registrationDate: layer1.registrationDate,
+      expirationDate: layer1.expirationDate,
+      lastChecked: layer1.completedAt,
       responseTime: `${responseTime}ms`,
-      note: layer2.confidence < 95
-        ? 'Fast verification (80-95% confidence). For 100% authoritative result, use /api/domain-check-stream'
-        : 'High-confidence result from comprehensive DNS verification'
+      note: 'Ultra-fast Layer 1 verification (60-85% confidence)'
     };
 
     return NextResponse.json(result);
