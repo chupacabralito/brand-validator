@@ -105,22 +105,34 @@ export class ProgressiveDomainService {
     let available = layer1Result.available;
     let confidence = layer1Result.confidence;
 
-    // Parallel execution of all fast checks
-    const [hasMX, hasNS, hasTXT, httpResponds, estimatedAge] = await Promise.all([
+    // Smart optimization: Skip expensive HTTP check if Layer 1 strongly suggests availability
+    const skipHTTP = available === true && confidence >= 65;
+
+    // Parallel execution of DNS checks only (optimized)
+    const [hasNS, hasMX] = await Promise.all([
+      this.checkDNSRecord(domain, 'NS'),  // NS is most reliable
       this.checkDNSRecord(domain, 'MX'),
-      this.checkDNSRecord(domain, 'NS'),
-      this.checkDNSRecord(domain, 'TXT'),
-      this.checkHTTPResponse(domain),
-      this.estimateDomainAge(domain)
     ]);
 
-    // Analyze results
-    const recordsFound = [hasMX, hasNS, hasTXT].filter(Boolean).length;
+    // Conditionally run additional checks based on initial results
+    let estimatedAge: number | null = null;
+    let httpResponds = false;
+
+    // Only check SOA and HTTP for likely-taken domains
+    if (available === false || confidence < 65) {
+      [estimatedAge, httpResponds] = await Promise.all([
+        this.estimateDomainAge(domain),
+        skipHTTP ? Promise.resolve(false) : this.checkHTTPResponse(domain)
+      ]);
+    }
+
+    // Analyze NS/MX records (most important)
+    const recordsFound = [hasNS, hasMX].filter(Boolean).length;
 
     if (recordsFound > 0) {
       available = false;
-      confidence = Math.min(95, confidence + (recordsFound * 10));
-      evidence.push(`Found ${recordsFound} DNS record types (MX/NS/TXT)`);
+      confidence = Math.min(95, confidence + (recordsFound * 15));
+      evidence.push(`Found ${recordsFound} critical DNS records (NS/MX)`);
     }
 
     if (httpResponds) {
@@ -129,12 +141,10 @@ export class ProgressiveDomainService {
       evidence.push('Domain responds to HTTP requests');
     }
 
-    if (estimatedAge !== null) {
-      if (estimatedAge > 90) {
-        available = false;
-        confidence = Math.min(95, confidence + 10);
-        evidence.push(`Domain appears to be ${estimatedAge}+ days old`);
-      }
+    if (estimatedAge !== null && estimatedAge > 90) {
+      available = false;
+      confidence = Math.min(95, confidence + 10);
+      evidence.push(`Domain appears to be ${estimatedAge}+ days old`);
     }
 
     // If still no strong evidence, lean toward available
@@ -236,7 +246,7 @@ export class ProgressiveDomainService {
   private async quickDNSCheck(domain: string): Promise<boolean> {
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`, {
-        signal: AbortSignal.timeout(500) // Ultra-fast timeout for instant results
+        signal: AbortSignal.timeout(400) // Aggressive: 400ms (was 500ms)
       });
 
       if (!response.ok) return false;
@@ -251,7 +261,7 @@ export class ProgressiveDomainService {
   private async checkDNSRecord(domain: string, type: 'MX' | 'NS' | 'TXT'): Promise<boolean> {
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=${type}`, {
-        signal: AbortSignal.timeout(800) // Reduced from 2000ms to 800ms
+        signal: AbortSignal.timeout(600) // Aggressive: 600ms (was 800ms)
       });
 
       if (!response.ok) return false;
@@ -265,22 +275,22 @@ export class ProgressiveDomainService {
 
   private async checkHTTPResponse(domain: string): Promise<boolean> {
     try {
-      // Try HTTPS first, then HTTP
-      for (const protocol of ['https', 'http']) {
-        try {
-          const response = await fetch(`${protocol}://${domain}`, {
-            method: 'HEAD',
-            signal: AbortSignal.timeout(1000), // Reduced from 3000ms to 1000ms
-            redirect: 'manual' // Don't follow redirects
-          });
+      // Race HTTPS and HTTP in parallel (don't wait for sequential timeouts)
+      const httpsCheck = fetch(`https://${domain}`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(700), // Aggressive: 700ms (was 1000ms)
+        redirect: 'manual'
+      }).then(res => res.status < 500).catch(() => false);
 
-          // Any response (even 404) means the domain is active
-          if (response.status < 500) return true;
-        } catch {
-          continue;
-        }
-      }
-      return false;
+      const httpCheck = fetch(`http://${domain}`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(700), // Aggressive: 700ms (was 1000ms)
+        redirect: 'manual'
+      }).then(res => res.status < 500).catch(() => false);
+
+      // Return true if EITHER succeeds (race condition)
+      const [https, http] = await Promise.all([httpsCheck, httpCheck]);
+      return https || http;
     } catch {
       return false;
     }
@@ -290,7 +300,7 @@ export class ProgressiveDomainService {
     // Use DNS SOA record to estimate age (simplified)
     try {
       const response = await fetch(`https://dns.google/resolve?name=${domain}&type=SOA`, {
-        signal: AbortSignal.timeout(800) // Reduced from 2000ms to 800ms
+        signal: AbortSignal.timeout(600) // Aggressive: 600ms (was 800ms)
       });
 
       if (!response.ok) return null;
