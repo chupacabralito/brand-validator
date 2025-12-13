@@ -53,8 +53,8 @@ export interface CompositeScoreResult {
 }
 
 export class CompositeScoreService {
-  // Cache for LLM brand quality scores (in-memory, could be Redis in production)
-  private static brandQualityCache = new Map<string, number>();
+  // Cache for LLM brand quality scores with reasoning (in-memory, could be Redis in production)
+  private static brandQualityCache = new Map<string, { score: number; reasoning: string }>();
 
   /**
    * Calculate a unified composite score (0-100) that represents overall brand strength
@@ -326,12 +326,13 @@ export class CompositeScoreService {
   /**
    * Use LLM to evaluate brand name quality
    * Cached to minimize API costs
+   * Returns both score and reasoning to explain the score
    */
-  private async evaluateBrandNameWithLLM(brandName: string): Promise<number> {
+  private async evaluateBrandNameWithLLM(brandName: string): Promise<{ score: number; reasoning: string }> {
     // Check cache first
     const cached = CompositeScoreService.brandQualityCache.get(brandName.toLowerCase());
     if (cached !== undefined) {
-      console.log(`Brand quality cache hit for "${brandName}": ${cached}`);
+      console.log(`Brand quality cache hit for "${brandName}": ${cached.score} - ${cached.reasoning}`);
       return cached;
     }
 
@@ -346,46 +347,87 @@ export class CompositeScoreService {
 
     try {
       const response = await aiService.generateContent({
-        system: `You are a brand naming expert. Evaluate the brand name quality on a scale of 0-100.
+        system: `You are a brand naming expert. Evaluate brand names on a scale of 0-100.
 
-Consider:
-- Pronounceability (easy to say?)
-- Memorability (easy to remember?)
-- Professionalism (sounds legitimate?)
-- Brandability (feels like a real brand?)
-- Uniqueness (stands out?)
+CRITICAL: First check if this is an EXISTING well-known brand. If yes, score 0-20 based on prominence:
 
-Examples:
-- "Google" = 95 (invented, memorable, pronounceable)
-- "Pikachu" = 90 (creative, fun, memorable)
-- "Spotify" = 92 (modern, unique, brandable)
-- "ThatSlaps" = 75 (casual, memorable, but informal)
-- "ioiubbbb" = 25 (gibberish, hard to pronounce, not brandable)
-- "qwerty" = 30 (keyboard pattern, no meaning)
+**0-5: Global mega-brands** (Impossible to use - immediate legal risk)
+- Examples: Google (2), Apple (3), Amazon (4), Microsoft (2), Facebook/Meta (3), Nike (4), Coca-Cola (2), McDonald's (1), Disney (2), Samsung (3)
+- Reason: "Existing global mega-brand - impossible to use legally"
 
-Return ONLY a number between 0-100. No explanation.`,
+**6-10: Well-known established brands** (Strong trademark protection)
+- Examples: Spotify (8), Airbnb (7), Slack (9), Uber (7), Netflix (8), Reddit (9), Snapchat (8), Dropbox (7), Tesla (5)
+- Reason: "Existing well-known brand - high legal risk"
+
+**11-15: Regional or niche brands** (Moderate risk)
+- Smaller companies, local brands, industry-specific names
+- Reason: "Existing regional/niche brand - moderate legal risk"
+
+**16-20: Defunct or weakly protected brands** (Lower risk but still problematic)
+- Examples: Blockbuster (18), Vine (17), MySpace (19), RadioShack (18)
+- Reason: "Defunct brand - lower risk but still trademarked"
+
+If NOT an existing brand, score 30-100 based on linguistic quality:
+
+**90-100: Excellent** (Invented words, highly brandable)
+- Examples: Zendesk (95), Figma (92), Canva (94), Duolingo (93)
+- Consider: pronounceability, memorability, uniqueness, professionalism
+
+**70-89: Good** (Strong names with minor issues)
+- Examples: TechFlow (82), BrandKit (78), SocialHub (75)
+- May be slightly generic or descriptive
+
+**50-69: Fair** (Acceptable but unremarkable)
+- Generic terms, common patterns, somewhat forgettable
+
+**30-49: Poor** (Gibberish, keyboard smash, hard to pronounce)
+- Examples: qwerty (35), ioiubbbb (32), xXxGamerxXx (40)
+
+Return ONLY in this format:
+SCORE: [number]
+REASON: [one sentence explanation]`,
         user: `Brand name: "${brandName}"`,
-        maxTokens: 10,
+        maxTokens: 100,
         temperature: 0.3 // Low temperature for consistent scoring
       });
 
-      const score = parseInt(response.trim());
+      // Parse response
+      const scoreMatch = response.match(/SCORE:\s*(\d+)/);
+      const reasonMatch = response.match(/REASON:\s*(.+)/);
+
+      if (!scoreMatch || !reasonMatch) {
+        console.error(`Failed to parse LLM response for "${brandName}": ${response}`);
+        return {
+          score: this.calculateHeuristicBrandScore(brandName),
+          reasoning: 'AI evaluation unavailable, using heuristic scoring'
+        };
+      }
+
+      const score = parseInt(scoreMatch[1]);
+      const reasoning = reasonMatch[1].trim();
 
       // Validate score
       if (isNaN(score) || score < 0 || score > 100) {
-        console.error(`Invalid LLM score for "${brandName}": ${response}`);
-        return 75; // Fallback to neutral score
+        console.error(`Invalid LLM score for "${brandName}": ${score}`);
+        return {
+          score: this.calculateHeuristicBrandScore(brandName),
+          reasoning: 'Invalid AI score, using heuristic'
+        };
       }
 
       // Cache the result
-      CompositeScoreService.brandQualityCache.set(brandName.toLowerCase(), score);
-      console.log(`LLM brand quality for "${brandName}": ${score}`);
+      const result = { score, reasoning };
+      CompositeScoreService.brandQualityCache.set(brandName.toLowerCase(), result);
+      console.log(`LLM brand quality for "${brandName}": ${score} - ${reasoning}`);
 
-      return score;
+      return result;
     } catch (error) {
       console.error(`LLM brand evaluation failed for "${brandName}":`, error);
       // Fallback to heuristic if LLM fails
-      return this.calculateHeuristicBrandScore(brandName);
+      return {
+        score: this.calculateHeuristicBrandScore(brandName),
+        reasoning: 'AI service unavailable, using heuristic scoring'
+      };
     }
   }
 
@@ -491,29 +533,22 @@ Return ONLY a number between 0-100. No explanation.`,
     const brandName = brandKit.brandName;
     const factors: string[] = [];
 
-    // Get LLM score
-    const score = await this.evaluateBrandNameWithLLM(brandName);
+    // Get LLM score and reasoning
+    const { score, reasoning } = await this.evaluateBrandNameWithLLM(brandName);
 
-    // Add contextual factors based on score
+    // Add the AI reasoning as the primary factor
+    factors.push(reasoning);
+
+    // Add contextual factors based on length
     const length = brandName.length;
     if (length <= 6) {
-      factors.push('Very short name');
+      factors.push('Very short name - easy to remember');
     } else if (length <= 8) {
-      factors.push('Short name');
+      factors.push('Short name - good for branding');
     } else if (length <= 12) {
-      factors.push('Moderate length');
+      factors.push('Moderate length - acceptable');
     } else {
-      factors.push('Longer name');
-    }
-
-    if (score >= 90) {
-      factors.push('Excellent AI-verified brand quality');
-    } else if (score >= 70) {
-      factors.push('Good AI-verified brand quality');
-    } else if (score >= 50) {
-      factors.push('Fair AI-verified brand quality');
-    } else {
-      factors.push('Poor AI-verified brand quality');
+      factors.push('Longer name - may be harder to remember');
     }
 
     return { score, factors };

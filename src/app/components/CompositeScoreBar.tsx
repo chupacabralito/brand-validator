@@ -83,7 +83,8 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
 
   return (
     <div className="bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 mb-8">
-      <div className="flex items-center justify-between">
+      {/* Main Score Row - Always Stable */}
+      <div className="flex items-center justify-between mb-4">
         {/* Left side - Brand Score */}
         <div className="flex items-center">
           <div className="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center mr-4">
@@ -97,23 +98,13 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
           </div>
         </div>
 
-        {/* Center - Score and Recommendation */}
+        {/* Right side - Score and Recommendation */}
         <div className="flex items-center space-x-6">
-          <div className="text-center relative">
+          <div className="text-center">
             <div className={`text-2xl font-bold px-4 py-2 rounded-lg border ${getScoreColor(compositeResult.overallScore)}`}>
               {compositeResult.overallScore}
             </div>
             <div className="text-xs text-gray-400 mt-1">/100</div>
-            {/* Tooltip trigger */}
-            <button
-              onClick={() => setShowBreakdown(!showBreakdown)}
-              className="absolute -top-1 -right-1 w-5 h-5 bg-gray-600 hover:bg-gray-500 rounded-full flex items-center justify-center transition-colors"
-              title="Show score breakdown"
-            >
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
           </div>
           <div className="text-center">
             <div className={`text-lg font-semibold capitalize ${getRecommendationColor(compositeResult.recommendation)}`}>
@@ -122,85 +113,129 @@ export default function CompositeScoreBar({ compositeResult, isLoading }: Compos
             <div className="text-xs text-gray-400">Assessment</div>
           </div>
         </div>
+      </div>
 
-        {/* Right side - Score Breakdown (only show when breakdown is toggled) */}
-        {showBreakdown && (
-          <div className="flex items-center space-x-6">
+      {/* Breakdown Toggle Button */}
+      <button
+        onClick={() => setShowBreakdown(!showBreakdown)}
+        className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm text-indigo-400 hover:text-indigo-300 hover:bg-indigo-600/10 rounded-lg transition-colors border border-gray-700/50 hover:border-indigo-600/30"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {showBreakdown ? 'Hide' : 'Show'} Score Breakdown
+        <svg className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Score Breakdown - Expandable Section */}
+      {showBreakdown && (
+        <div className="mt-4 pt-4 border-t border-gray-700 space-y-4">
+          {/* Component Scores Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Domain Score */}
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-white">Domain</span>
+            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                <span className="text-xs font-medium text-white">Domain</span>
               </div>
-              <div className="text-lg font-bold text-blue-400">{compositeResult.breakdown.domain.score}</div>
-              <div className="text-xs text-gray-400">/100</div>
+              <div className="text-2xl font-bold text-blue-400">{compositeResult.breakdown.domain.score}</div>
+              <div className="text-xs text-gray-400 mt-1">Weight: {compositeResult.breakdown.domain.weight * 100}%</div>
             </div>
 
             {/* Social Score */}
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <div className="w-3 h-3 bg-pink-600 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-white">Social</span>
+            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 bg-pink-600 rounded-full"></div>
+                <span className="text-xs font-medium text-white">Social</span>
               </div>
-              <div className="text-lg font-bold text-pink-400">{compositeResult.breakdown.social.score}</div>
-              <div className="text-xs text-gray-400">/100</div>
+              <div className="text-2xl font-bold text-pink-400">{compositeResult.breakdown.social.score}</div>
+              <div className="text-xs text-gray-400 mt-1">Weight: {compositeResult.breakdown.social.weight * 100}%</div>
             </div>
 
             {/* Trademark Score */}
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <div className="w-3 h-3 bg-purple-600 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-white">Trademark</span>
+            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
+                <span className="text-xs font-medium text-white">Trademark</span>
               </div>
-              <div className="text-lg font-bold text-purple-400">{compositeResult.breakdown.trademark.score}</div>
-              <div className="text-xs text-gray-400">/100</div>
+              <div className="text-2xl font-bold text-purple-400">{compositeResult.breakdown.trademark.score}</div>
+              <div className="text-xs text-gray-400 mt-1">Weight: {compositeResult.breakdown.trademark.weight * 100}%</div>
             </div>
 
             {/* Name Quality Score */}
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-1">
-                <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-white">Name</span>
+            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                <span className="text-xs font-medium text-white">Name Quality</span>
               </div>
-              <div className="text-lg font-bold text-green-400">{compositeResult.breakdown.brand.score}</div>
-              <div className="text-xs text-gray-400">/100</div>
+              <div className="text-2xl font-bold text-green-400">{compositeResult.breakdown.brand.score}</div>
+              <div className="text-xs text-gray-400 mt-1">Weight: {compositeResult.breakdown.brand.weight * 100}%</div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Score Calculation Breakdown - only show when breakdown is toggled */}
-      {showBreakdown && (
-        <div className="mt-4 pt-4 border-t border-gray-700">
-          <div className="mb-3">
-            <h4 className="text-sm font-medium text-white mb-2">Score Calculation</h4>
-            <div className="grid grid-cols-4 gap-4 text-xs">
-              <div className="text-center">
-                <div className="text-blue-400 font-medium">Domain</div>
-                <div className="text-gray-300">{compositeResult.breakdown.domain.score} × 25%</div>
-                <div className="text-gray-400">= {Math.round(compositeResult.breakdown.domain.score * 0.25)}</div>
+          {/* Detailed Factors */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* Domain Factors */}
+            {compositeResult.breakdown.domain.factors.length > 0 && (
+              <div className="bg-gray-800/20 rounded-lg p-3 border border-gray-700/30">
+                <h5 className="text-xs font-semibold text-blue-400 mb-2">Domain Factors</h5>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  {compositeResult.breakdown.domain.factors.map((factor, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="text-blue-400 mr-2">•</span>
+                      <span>{factor}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="text-center">
-                <div className="text-pink-400 font-medium">Social</div>
-                <div className="text-gray-300">{compositeResult.breakdown.social.score} × 20%</div>
-                <div className="text-gray-400">= {Math.round(compositeResult.breakdown.social.score * 0.20)}</div>
+            )}
+
+            {/* Social Factors */}
+            {compositeResult.breakdown.social.factors.length > 0 && (
+              <div className="bg-gray-800/20 rounded-lg p-3 border border-gray-700/30">
+                <h5 className="text-xs font-semibold text-pink-400 mb-2">Social Factors</h5>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  {compositeResult.breakdown.social.factors.map((factor, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="text-pink-400 mr-2">•</span>
+                      <span>{factor}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="text-center">
-                <div className="text-purple-400 font-medium">Trademark</div>
-                <div className="text-gray-300">{compositeResult.breakdown.trademark.score} × 30%</div>
-                <div className="text-gray-400">= {Math.round(compositeResult.breakdown.trademark.score * 0.30)}</div>
+            )}
+
+            {/* Trademark Factors */}
+            {compositeResult.breakdown.trademark.factors.length > 0 && (
+              <div className="bg-gray-800/20 rounded-lg p-3 border border-gray-700/30">
+                <h5 className="text-xs font-semibold text-purple-400 mb-2">Trademark Factors</h5>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  {compositeResult.breakdown.trademark.factors.map((factor, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="text-purple-400 mr-2">•</span>
+                      <span>{factor}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="text-center">
-                <div className="text-green-400 font-medium">Name</div>
-                <div className="text-gray-300">{compositeResult.breakdown.brand.score} × 25%</div>
-                <div className="text-gray-400">= {Math.round(compositeResult.breakdown.brand.score * 0.25)}</div>
+            )}
+
+            {/* Brand Factors */}
+            {compositeResult.breakdown.brand.factors.length > 0 && (
+              <div className="bg-gray-800/20 rounded-lg p-3 border border-gray-700/30">
+                <h5 className="text-xs font-semibold text-green-400 mb-2">Name Quality Factors</h5>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  {compositeResult.breakdown.brand.factors.map((factor, i) => (
+                    <li key={i} className="flex items-start">
+                      <span className="text-green-400 mr-2">•</span>
+                      <span>{factor}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-gray-600 text-center">
-              <div className="text-sm text-gray-300">
-                Total: {Math.round(compositeResult.breakdown.domain.score * 0.25 + compositeResult.breakdown.social.score * 0.20 + compositeResult.breakdown.trademark.score * 0.30 + compositeResult.breakdown.brand.score * 0.25)}/100
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
