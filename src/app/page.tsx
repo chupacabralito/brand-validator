@@ -212,14 +212,28 @@ export default function Home() {
         console.log('Domain search detected for:', searchQuery);
         const domainRoot = searchQuery.split('.')[0];
 
-        // Run ALL APIs in parallel for maximum speed
-        const [domainResponse, brandResponse, trademarkResponse, socialResponse] = await Promise.all([
-          fetch('/api/domain-check-fast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain: searchQuery }),
-            signal: AbortSignal.timeout(5000) // 5s timeout (fast endpoint is ~200ms)
-          }),
+        // PROGRESSIVE RENDERING: Start domain check immediately (fastest API)
+        // This allows UI to update in <500ms without waiting for slow APIs
+        const domainPromise = fetch('/api/domain-check-fast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: searchQuery }),
+          signal: AbortSignal.timeout(5000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Domain API response (instant):', data);
+          setDomainResult(data);
+          setIsLoading(false); // Stop loading spinner immediately
+          return data;
+        })
+        .catch(err => {
+          console.error('Domain check failed:', err);
+          return null;
+        });
+
+        // Run slower APIs in parallel WITHOUT blocking UI
+        const slowAPIsPromise = Promise.all([
           fetch('/api/brand-kit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -229,41 +243,44 @@ export default function Home() {
               audience: 'tech professionals',
               domain: searchQuery
             }),
-            signal: AbortSignal.timeout(15000) // 15s timeout (AI generation can be slow)
+            signal: AbortSignal.timeout(15000)
           }),
           fetch('/api/trademark-search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ brandName: domainRoot }),
-            signal: AbortSignal.timeout(35000) // 35s timeout (trademark search is slowest)
+            signal: AbortSignal.timeout(35000)
           }),
           fetch('/api/social-check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ handleBase: domainRoot }),
-            signal: AbortSignal.timeout(15000) // 15s timeout (Zyla API can be slow)
+            signal: AbortSignal.timeout(15000)
           })
-        ]);
+        ])
+        .then(([brandRes, trademarkRes, socialRes]) =>
+          Promise.all([brandRes.json(), trademarkRes.json(), socialRes.json()])
+        )
+        .then(([brandData, trademarkData, socialData]) => {
+          console.log('Brand API response:', brandData);
+          console.log('Trademark API response:', trademarkData);
+          console.log('Social API response:', socialData);
 
-        // Parse all responses in parallel
-        const [domainData, brandData, trademarkData, socialData] = await Promise.all([
-          domainResponse.json(),
-          brandResponse.json(),
-          trademarkResponse.json(),
-          socialResponse.json()
-        ]);
+          setBrandKit(brandData);
+          setTrademarkResult(trademarkData);
+          setSocialResult(socialData);
 
-        console.log('Domain API response:', domainData);
-        console.log('Brand API response:', brandData);
-        console.log('Trademark API response:', trademarkData);
-        console.log('Social API response:', socialData);
+          return { brandData, trademarkData, socialData };
+        })
+        .catch(err => {
+          console.error('Slow APIs failed:', err);
+          return null;
+        });
 
-        setDomainResult(domainData);
-        setBrandKit(brandData);
-        setTrademarkResult(trademarkData);
-        setSocialResult(socialData);
+        // Wait for domain result (fast) but don't block on slow APIs
+        await domainPromise;
 
-        // Composite score will be calculated automatically via useEffect
+        // Composite score will be calculated automatically via useEffect when all results available
 
       } else {
         // Idea search flow - run all APIs in parallel
