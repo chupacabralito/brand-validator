@@ -2,48 +2,39 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
 import SearchBox from '@/app/components/SearchBox';
+import DomainRail from '@/app/components/DomainRail';
+import BrandKitRail from '@/app/components/BrandKitRail';
+import SocialHandlesRail from '@/app/components/SocialHandlesRail';
+import TrademarkSearchResults from '@/app/components/TrademarkSearchResults';
+import CompositeScoreBar from '@/app/components/CompositeScoreBar';
 import { DomainResult, BrandKit, SocialCheckResult } from '@/lib/models/DomainResult';
 import { TrademarkSearchResult } from '@/lib/services/trademarkSearch';
 import { CompositeScoreResult } from '@/lib/services/compositeScore';
 
-// Lazy load result components - only loaded when search results are available
-// This reduces initial bundle size and improves time-to-interactive
-const DomainRail = dynamic(() => import('@/app/components/DomainRail'), {
-  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
-  ssr: false
-});
-
-const BrandKitRail = dynamic(() => import('@/app/components/BrandKitRail'), {
-  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
-  ssr: false
-});
-
-const SocialHandlesRail = dynamic(() => import('@/app/components/SocialHandlesRail'), {
-  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
-  ssr: false
-});
-
-const TrademarkSearchResults = dynamic(() => import('@/app/components/TrademarkSearchResults'), {
-  loading: () => <div className="bg-gray-800 rounded-lg p-6 animate-pulse h-96"></div>,
-  ssr: false
-});
-
-const CompositeScoreBar = dynamic(() => import('@/app/components/CompositeScoreBar'), {
-  loading: () => <div className="bg-gray-800 rounded-lg p-4 mb-8 animate-pulse h-24"></div>,
-  ssr: false
-});
+// NO DYNAMIC IMPORTS - Load all components immediately to prevent layout shift
+// This ensures the grid structure renders instantly and data populates progressively
 
 export default function Home() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Individual loading states for each rail (progressive loading)
+  const [isDomainLoading, setIsDomainLoading] = useState(false);
+  const [isBrandLoading, setIsBrandLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isTrademarkLoading, setIsTrademarkLoading] = useState(false);
+
+  // Results state
   const [domainResult, setDomainResult] = useState<DomainResult | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
   const [socialResult, setSocialResult] = useState<SocialCheckResult | null>(null);
   const [trademarkResult, setTrademarkResult] = useState<TrademarkSearchResult | null>(null);
   const [compositeResult, setCompositeResult] = useState<CompositeScoreResult | null>(null);
   const [selectedTrademarkCategory, setSelectedTrademarkCategory] = useState<string>('all');
+
+  // Show results grid flag - appears immediately on search
+  const [showResults, setShowResults] = useState(false);
 
   // Debug: Log when composite result changes
   useEffect(() => {
@@ -203,6 +194,16 @@ export default function Home() {
     setIsLoading(true);
     setQuery(searchQuery);
 
+    // Show results grid immediately (empty skeleton)
+    setShowResults(true);
+
+    // Reset all results and set all to loading
+    setDomainResult(null);
+    setBrandKit(null);
+    setSocialResult(null);
+    setTrademarkResult(null);
+    setCompositeResult(null);
+
     try {
       // Check if it's a domain or idea
       const isDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(searchQuery);
@@ -212,9 +213,15 @@ export default function Home() {
         console.log('Domain search detected for:', searchQuery);
         const domainRoot = searchQuery.split('.')[0];
 
+        // Set individual loading states
+        setIsDomainLoading(true);
+        setIsBrandLoading(true);
+        setIsSocialLoading(true);
+        setIsTrademarkLoading(true);
+
         // PROGRESSIVE RENDERING: Start domain check immediately (fastest API)
         // This allows UI to update in <500ms without waiting for slow APIs
-        const domainPromise = fetch('/api/domain-check-fast', {
+        fetch('/api/domain-check-fast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ domain: searchQuery }),
@@ -224,121 +231,157 @@ export default function Home() {
         .then(data => {
           console.log('Domain API response (instant):', data);
           setDomainResult(data);
-          setIsLoading(false); // Stop loading spinner immediately
-          return data;
+          setIsDomainLoading(false);
+          setIsLoading(false); // Stop main loading spinner
         })
         .catch(err => {
           console.error('Domain check failed:', err);
-          return null;
+          setIsDomainLoading(false);
         });
 
-        // Run slower APIs in parallel WITHOUT blocking UI
-        const slowAPIsPromise = Promise.all([
-          fetch('/api/brand-kit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              idea: `Brand for ${searchQuery}`,
-              tone: 'modern',
-              audience: 'tech professionals',
-              domain: searchQuery
-            }),
-            signal: AbortSignal.timeout(15000)
+        // Brand Kit API (independent)
+        fetch('/api/brand-kit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idea: `Brand for ${searchQuery}`,
+            tone: 'modern',
+            audience: 'tech professionals',
+            domain: searchQuery
           }),
-          fetch('/api/trademark-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ brandName: domainRoot }),
-            signal: AbortSignal.timeout(35000)
-          }),
-          fetch('/api/social-check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ handleBase: domainRoot }),
-            signal: AbortSignal.timeout(15000)
-          })
-        ])
-        .then(([brandRes, trademarkRes, socialRes]) =>
-          Promise.all([brandRes.json(), trademarkRes.json(), socialRes.json()])
-        )
-        .then(([brandData, trademarkData, socialData]) => {
-          console.log('Brand API response:', brandData);
-          console.log('Trademark API response:', trademarkData);
-          console.log('Social API response:', socialData);
-
-          setBrandKit(brandData);
-          setTrademarkResult(trademarkData);
-          setSocialResult(socialData);
-
-          return { brandData, trademarkData, socialData };
+          signal: AbortSignal.timeout(15000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Brand API response:', data);
+          setBrandKit(data);
+          setIsBrandLoading(false);
         })
         .catch(err => {
-          console.error('Slow APIs failed:', err);
-          return null;
+          console.error('Brand API failed:', err);
+          setIsBrandLoading(false);
         });
 
-        // Wait for domain result (fast) but don't block on slow APIs
-        await domainPromise;
+        // Trademark Search API (independent)
+        fetch('/api/trademark-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brandName: domainRoot }),
+          signal: AbortSignal.timeout(35000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Trademark API response:', data);
+          setTrademarkResult(data);
+          setIsTrademarkLoading(false);
+        })
+        .catch(err => {
+          console.error('Trademark API failed:', err);
+          setIsTrademarkLoading(false);
+        });
+
+        // Social Check API (independent)
+        fetch('/api/social-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handleBase: domainRoot }),
+          signal: AbortSignal.timeout(15000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Social API response:', data);
+          setSocialResult(data);
+          setIsSocialLoading(false);
+        })
+        .catch(err => {
+          console.error('Social API failed:', err);
+          setIsSocialLoading(false);
+        });
 
         // Composite score will be calculated automatically via useEffect when all results available
 
       } else {
-        // Idea search flow - run all APIs in parallel
+        // Idea search flow - progressive loading for ideas too
         const handleBase = searchQuery.toLowerCase().replace(/\s/g, '');
 
-        const [brandResponse, socialResponse, trademarkResponse] = await Promise.all([
-          fetch('/api/brand-kit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              idea: searchQuery,
-              tone: 'modern',
-              audience: 'general audience'
-            }),
-            signal: AbortSignal.timeout(15000) // 15s timeout (AI generation can be slow)
+        // Set individual loading states (no domain for ideas)
+        setIsDomainLoading(false);
+        setIsBrandLoading(true);
+        setIsSocialLoading(true);
+        setIsTrademarkLoading(true);
+
+        // Brand Kit API (independent)
+        fetch('/api/brand-kit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idea: searchQuery,
+            tone: 'modern',
+            audience: 'general audience'
           }),
-          fetch('/api/social-check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ handleBase }),
-            signal: AbortSignal.timeout(15000) // 15s timeout (Zyla API can be slow)
+          signal: AbortSignal.timeout(15000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Brand API response:', data);
+          setBrandKit(data);
+          setIsBrandLoading(false);
+          setIsLoading(false); // Stop main spinner after first result
+        })
+        .catch(err => {
+          console.error('Brand API failed:', err);
+          setIsBrandLoading(false);
+        });
+
+        // Social Check API (independent)
+        fetch('/api/social-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handleBase }),
+          signal: AbortSignal.timeout(15000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Social API response:', data);
+          setSocialResult(data);
+          setIsSocialLoading(false);
+        })
+        .catch(err => {
+          console.error('Social API failed:', err);
+          setIsSocialLoading(false);
+        });
+
+        // Trademark Search API (independent)
+        fetch('/api/trademark-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            brandName: searchQuery,
+            classes: [35, 42],
+            includeInternational: false
           }),
-          fetch('/api/trademark-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              brandName: searchQuery,
-              classes: [35, 42], // Default business classes for ideas
-              includeInternational: false
-            }),
-            signal: AbortSignal.timeout(35000) // 35s timeout (trademark search is slowest)
-          })
-        ]);
-
-        // Parse all responses in parallel
-        const [brandData, socialData, trademarkData] = await Promise.all([
-          brandResponse.json(),
-          socialResponse.json(),
-          trademarkResponse.json()
-        ]);
-
-        console.log('Brand API response:', brandData);
-        console.log('Social API response:', socialData);
-        console.log('Trademark API response:', trademarkData);
-
-        setBrandKit(brandData);
-        setSocialResult(socialData);
-        setTrademarkResult(trademarkData);
-
-        // For idea searches, don't automatically check domain availability
-        setDomainResult(null);
+          signal: AbortSignal.timeout(35000)
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Trademark API response:', data);
+          setTrademarkResult(data);
+          setIsTrademarkLoading(false);
+        })
+        .catch(err => {
+          console.error('Trademark API failed:', err);
+          setIsTrademarkLoading(false);
+        });
 
         // Composite score will be calculated automatically via useEffect
       }
     } catch (error) {
       console.error('Search error:', error);
-    } finally {
       setIsLoading(false);
+      setIsDomainLoading(false);
+      setIsBrandLoading(false);
+      setIsSocialLoading(false);
+      setIsTrademarkLoading(false);
     }
   };
 
@@ -374,32 +417,33 @@ export default function Home() {
           <SearchBox onSearch={handleSearch} isLoading={isLoading} />
         </div>
 
-        {/* Results */}
-        {(domainResult || brandKit || trademarkResult || socialResult || compositeResult) && (
+        {/* Results - Grid appears IMMEDIATELY with loading skeletons */}
+        {showResults && (
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
               <h3 className="text-2xl font-bold text-white mb-2">Search Results</h3>
               <p className="text-gray-300">Complete brand validation results for your search</p>
             </div>
 
-            {/* Composite Score Bar */}
-            <CompositeScoreBar 
-              compositeResult={compositeResult} 
-              isLoading={isLoading}
+            {/* Composite Score Bar - Shows immediately, populates when data arrives */}
+            <CompositeScoreBar
+              compositeResult={compositeResult}
+              isLoading={!compositeResult && (isDomainLoading || isBrandLoading || isSocialLoading || isTrademarkLoading)}
             />
-            
+
+            {/* Grid structure renders INSTANTLY - no layout shift */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
               {/* Left Rail - Domain Verify */}
               <DomainRail
                 domainResult={domainResult}
-                isLoading={isLoading}
+                isLoading={isDomainLoading}
                 onRefresh={handleDomainRefresh}
               />
 
               {/* Middle Left Rail - Trademark Search */}
-              <TrademarkSearchResults 
-                result={trademarkResult} 
-                isLoading={isLoading}
+              <TrademarkSearchResults
+                result={trademarkResult}
+                isLoading={isTrademarkLoading}
                 onAffiliateClick={handleAffiliateClick}
                 onCategoryChange={handleTrademarkCategoryChange}
               />
@@ -407,14 +451,14 @@ export default function Home() {
               {/* Middle Right Rail - Social Handles */}
               <SocialHandlesRail
                 socialResult={socialResult}
-                isLoading={isLoading}
+                isLoading={isSocialLoading}
                 onAffiliateClick={handleAffiliateClick}
               />
 
               {/* Right Rail - Brand Kit */}
               <BrandKitRail
                 brandKit={brandKit}
-                isLoading={isLoading}
+                isLoading={isBrandLoading}
                 onCheckDomain={handleDomainCheck}
                 searchTerm={query}
               />
