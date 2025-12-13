@@ -125,6 +125,28 @@ export default function Home() {
     }
   }, [domainResult, socialResult, trademarkResult, brandKit, calculateCompositeScore]);
 
+  // OPTIMIZATION: Cache results when composite score is calculated
+  useEffect(() => {
+    if (compositeResult && query) {
+      const cacheKey = `search_${query.toLowerCase()}`;
+      const cacheData = {
+        timestamp: Date.now(),
+        domain: domainResult,
+        brand: brandKit,
+        social: socialResult,
+        trademark: trademarkResult,
+        composite: compositeResult
+      };
+
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log('Cached results for query:', query);
+      } catch (e) {
+        console.warn('Failed to cache results:', e);
+      }
+    }
+  }, [compositeResult, query, domainResult, brandKit, socialResult, trademarkResult]);
+
   const handleAffiliateClick = async (partner: string, offer: string, url: string) => {
     try {
       const response = await fetch('/api/affiliate/click', {
@@ -191,6 +213,32 @@ export default function Home() {
     if (!searchQuery.trim()) return;
 
     console.log('Search initiated for:', searchQuery);
+
+    // OPTIMIZATION: Client-side cache check (instant for repeated searches)
+    const cacheKey = `search_${searchQuery.toLowerCase()}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached);
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Use cache if < 5 minutes old
+        if (cacheAge < 5 * 60 * 1000) {
+          console.log('Using cached results (age:', Math.floor(cacheAge / 1000), 'seconds)');
+          setShowResults(true);
+          setDomainResult(cachedData.domain || null);
+          setBrandKit(cachedData.brand || null);
+          setSocialResult(cachedData.social || null);
+          setTrademarkResult(cachedData.trademark || null);
+          setCompositeResult(cachedData.composite || null);
+          setQuery(searchQuery);
+          return; // Skip API calls entirely!
+        }
+      } catch (e) {
+        console.warn('Cache parse error:', e);
+      }
+    }
+
     setIsLoading(true);
     setQuery(searchQuery);
 
