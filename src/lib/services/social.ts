@@ -158,10 +158,15 @@ export class SocialService {
               return null;
             }
 
-            // Reject unreliable "login redirect" detection
-            // Login redirects don't mean the account exists - platforms redirect for privacy
-            if (earlyDetection === 'redirected_to_login_account_exists') {
-              console.warn(`Zyla API ${platform} using unreliable login redirect heuristic - falling back to our heuristics`);
+            // CRITICAL: Reject ALL early detection heuristics
+            // Any "early_detection" value means Zyla is GUESSING, not actually parsing account data
+            // Early detection methods are fundamentally unreliable:
+            // - "status_200_valid_url" - 200 doesn't mean account exists
+            // - "redirected_to_login_account_exists" - login redirects are for privacy
+            // - Other methods - also unreliable web scraping guesses
+            // Only trust Zyla when it actually parses real account data (early_detection undefined/null)
+            if (earlyDetection) {
+              console.warn(`Zyla API ${platform} using unreliable early detection "${earlyDetection}" - falling back to our heuristics`);
               return null;
             }
           }
