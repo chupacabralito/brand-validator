@@ -480,15 +480,23 @@ export default function Home() {
             />
 
             {/* Grid structure renders INSTANTLY - no layout shift */}
+            {/* Progressive loading order: Fastest → Slowest (Domain ~500ms, Social ~2-4s, Trademark ~3-10s, Brand ~5-15s) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-              {/* Left Rail - Domain Verify */}
+              {/* Left Rail - Domain Verify (FASTEST: ~500ms) */}
               <DomainRail
                 domainResult={domainResult}
                 isLoading={isDomainLoading}
                 onRefresh={handleDomainRefresh}
               />
 
-              {/* Middle Left Rail - Trademark Search */}
+              {/* Middle Left Rail - Social Handles (FAST: ~2-4s) */}
+              <SocialHandlesRail
+                socialResult={socialResult}
+                isLoading={isSocialLoading}
+                onAffiliateClick={handleAffiliateClick}
+              />
+
+              {/* Middle Right Rail - Trademark Search (SLOWER: ~3-10s) */}
               <TrademarkSearchResults
                 result={trademarkResult}
                 isLoading={isTrademarkLoading}
@@ -496,14 +504,7 @@ export default function Home() {
                 onCategoryChange={handleTrademarkCategoryChange}
               />
 
-              {/* Middle Right Rail - Social Handles */}
-              <SocialHandlesRail
-                socialResult={socialResult}
-                isLoading={isSocialLoading}
-                onAffiliateClick={handleAffiliateClick}
-              />
-
-              {/* Right Rail - Brand Kit */}
+              {/* Right Rail - Brand Kit (SLOWEST: ~5-15s - uses AI) */}
               <BrandKitRail
                 brandKit={brandKit}
                 isLoading={isBrandLoading}
