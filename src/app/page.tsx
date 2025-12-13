@@ -53,7 +53,7 @@ export default function Home() {
   const handleDomainCheck = async (domain: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/domain-check', {
+      const response = await fetch('/api/domain-check-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain })
@@ -165,16 +165,15 @@ export default function Home() {
   const handleDomainRefresh = async () => {
     if (!domainResult) return;
 
-    console.log('Refreshing domain data (bypassing cache)...');
+    console.log('Refreshing domain data...');
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/domain-check', {
+      const response = await fetch('/api/domain-check-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          domain: domainResult.query,
-          refresh: true // Force cache bypass
+          domain: domainResult.query
         })
       });
 
@@ -215,11 +214,11 @@ export default function Home() {
 
         // Run ALL APIs in parallel for maximum speed
         const [domainResponse, brandResponse, trademarkResponse, socialResponse] = await Promise.all([
-          fetch('/api/domain-check', {
+          fetch('/api/domain-check-fast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domain: searchQuery }),
-            signal: AbortSignal.timeout(15000) // 15s timeout (domain check can be slow)
+            signal: AbortSignal.timeout(5000) // 5s timeout (fast endpoint is ~200ms)
           }),
           fetch('/api/brand-kit', {
             method: 'POST',
