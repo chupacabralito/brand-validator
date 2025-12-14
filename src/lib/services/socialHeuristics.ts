@@ -41,6 +41,19 @@ const TECH_BRANDS = new Set([
   'paypal', 'visa', 'mastercard', 'spotify', 'shopify', 'stripe', 'square', 'venmo', 'cashapp',
   // Media & entertainment
   'espn', 'cnn', 'bbc', 'nba', 'nfl', 'mlb', 'nhl', 'fifa', 'xbox', 'playstation', 'nintendo',
+  // Streaming services
+  'hulu', 'disney', 'hbo', 'peacock', 'paramount', 'showtime', 'crunchyroll', 'funimation', 'prime', 'max',
+  'espnplus', 'disneyplus', 'hbomax', 'paramountplus', 'appletv', 'vudu', 'pluto', 'tubi', 'roku',
+  // Major retailers & e-commerce
+  'ebay', 'etsy', 'alibaba', 'wayfair', 'bestbuy', 'costco', 'homedepot', 'lowes', 'ikea', 'sephora',
+  // Social media & communication
+  'whatsapp', 'telegram', 'signal', 'viber', 'wechat', 'line', 'kakao', 'messenger', 'skype', 'teams',
+  // Food delivery & services
+  'doordash', 'grubhub', 'postmates', 'ubereats', 'instacart', 'seamless', 'deliveroo', 'zomato',
+  // Travel & hospitality
+  'expedia', 'booking', 'hotels', 'kayak', 'tripadvisor', 'marriott', 'hilton', 'hyatt',
+  // Finance & banking
+  'chase', 'wells', 'bofa', 'citibank', 'capitalone', 'amex', 'discover', 'robinhood', 'coinbase', 'binance',
   // Generic terms
   'news', 'sports', 'music', 'gaming', 'fitness', 'food', 'travel', 'fashion', 'beauty', 'tech'
 ]);
