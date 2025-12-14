@@ -282,7 +282,29 @@ export class ProgressiveDomainService {
       if (!response.ok) return false;
 
       const data = await response.json();
-      return !!(data.Answer && data.Answer.length > 0);
+
+      // Check for Answer records (A records = domain resolves)
+      const hasAnswer = data.Answer && data.Answer.length > 0;
+      if (hasAnswer) {
+        return true; // Has A records = registered
+      }
+
+      // CRITICAL: Check for Authority records (SOA/NS records = domain is registered but parked)
+      // Many registered domains return Authority section instead of Answer
+      const hasAuthority = data.Authority && data.Authority.length > 0;
+      if (hasAuthority) {
+        // Check if Authority contains SOA or NS records (indicates domain is registered)
+        const hasSoaOrNs = data.Authority.some((record: any) =>
+          record.type === 6 || // SOA record
+          record.type === 2    // NS record
+        );
+
+        if (hasSoaOrNs) {
+          return true; // Has SOA/NS records = registered
+        }
+      }
+
+      return false; // No records = available
     } catch {
       return false;
     }
