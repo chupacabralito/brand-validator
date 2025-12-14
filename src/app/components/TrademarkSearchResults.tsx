@@ -417,9 +417,12 @@ export default function TrademarkSearchResults({ result, isLoading, onAffiliateC
       {/* No conflicts at all */}
       {result.exactMatches.length === 0 && result.similarMatches.length === 0 && riskLevel === 'low' && (
         <div className="mb-4">
-          <p className="text-xs text-green-300">
-            ✅ No trademark conflicts detected in USPTO database.
-          </p>
+          <div className="flex items-center gap-2">
+            <StatusDot status="success" />
+            <p className="text-xs text-green-300">
+              No trademark conflicts detected in USPTO database
+            </p>
+          </div>
         </div>
       )}
     </StandardContainer>
