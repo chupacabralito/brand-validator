@@ -148,6 +148,23 @@ export class SocialHandleHeuristics {
       };
     }
 
+    // PRIORITY CHECK 5: First name + surname patterns (highly likely taken)
+    // Checks for patterns like "johndoe", "janesmith", "alexjohnson"
+    for (const firstName of COMMON_FIRST_NAMES) {
+      if (clean.startsWith(firstName) && clean.length > firstName.length + 2) {
+        const remainder = clean.substring(firstName.length);
+        // If remainder looks like a surname (4+ letters, no numbers/special chars)
+        if (remainder.length >= 4 && /^[a-z]+$/.test(remainder)) {
+          return {
+            available: false,
+            confidence: 85,
+            score: 90,
+            factors: ['Likely first name + surname combination']
+          };
+        }
+      }
+    }
+
     // Rule 1: Length Analysis (25% weight - reduced from 30%)
     const lengthScore = this.scoreLength(length);
     takenScore += lengthScore * 0.25;
