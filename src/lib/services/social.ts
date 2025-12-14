@@ -1,5 +1,6 @@
 import { SocialCheckResult, SocialHandleResult } from '../models/DomainResult';
 import { SocialHandleHeuristics } from './socialHeuristics';
+import { DirectSocialCheckService } from './directSocialCheck';
 
 type SocialPlatform = "instagram" | "tiktok" | "twitter" | "youtube" | "linkedin" | "facebook" | "snapchat" | "pinterest" | "discord" | "threads" | "reddit" | "twitch" | "medium" | "github";
 
@@ -27,10 +28,12 @@ interface ZylaResponse {
 
 export class SocialService {
   private heuristics: SocialHandleHeuristics;
+  private directCheck: DirectSocialCheckService;
   private zylaApiKey: string;
 
   constructor(zylaApiKey?: string) {
     this.heuristics = new SocialHandleHeuristics();
+    this.directCheck = new DirectSocialCheckService();
     this.zylaApiKey = zylaApiKey || process.env.ZYLA_API_KEY || '';
   }
 
@@ -78,6 +81,35 @@ export class SocialService {
 
     // Always use heuristics for remaining platforms
     results.push(...heuristicPlatforms.map(p => this.checkPlatform(baseHandle, p)));
+
+    // Layer 2: Direct HTTP checks for uncertain results (confidence < 85%)
+    console.log('Running Layer 2: Direct HTTP verification for uncertain results...');
+    const uncertainPlatforms = results
+      .filter(r => (r.confidence || 0) < 85)
+      .map(r => ({ platform: r.platform, heuristicConfidence: r.confidence || 50 }));
+
+    if (uncertainPlatforms.length > 0) {
+      const httpResults = await this.directCheck.checkMultiplePlatforms(baseHandle, uncertainPlatforms);
+
+      // Merge HTTP results with heuristics (HTTP results override heuristics)
+      for (const httpResult of httpResults) {
+        const index = results.findIndex(r => r.platform === httpResult.platform);
+        if (index !== -1 && results[index]) {
+          const existingFactors = results[index].factors || [];
+          // Update with HTTP check results
+          results[index] = {
+            ...results[index],
+            available: !httpResult.exists,
+            confidence: httpResult.confidence,
+            factors: [
+              `HTTP verification: ${httpResult.exists ? 'Exists' : 'Available'} (${httpResult.statusCode})`,
+              ...existingFactors.slice(0, 1) // Keep one heuristic factor for context
+            ]
+          };
+          console.log(`Updated ${httpResult.platform} with HTTP check: ${httpResult.exists ? 'TAKEN' : 'AVAILABLE'} (${httpResult.confidence}% confidence)`);
+        }
+      }
+    }
 
     // Sort by platform order (priority platforms first)
     const platformOrder: SocialPlatform[] = ['instagram', 'tiktok', 'twitter', 'threads', 'youtube', 'linkedin', 'facebook', 'reddit', 'twitch', 'medium', 'github', 'snapchat', 'pinterest', 'discord'];
