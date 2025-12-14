@@ -1611,7 +1611,7 @@ export class TrademarkSearchService {
     const recommendations = [];
 
     if (risk === 'high') {
-      recommendations.push('⚠️ Do NOT purchase this domain - high trademark risk');
+      recommendations.push('Do NOT purchase this domain - high trademark risk');
       recommendations.push('Choose a different domain to avoid legal issues');
       recommendations.push('Consult trademark attorney if you already own this domain');
     } else if (risk === 'medium') {
@@ -1619,7 +1619,7 @@ export class TrademarkSearchService {
       recommendations.push('Consider a more distinctive domain name');
       recommendations.push('Consult attorney if planning commercial use');
     } else {
-      recommendations.push('✅ No major trademark conflicts detected');
+      recommendations.push('No major trademark conflicts detected');
       recommendations.push('Safe to proceed with domain purchase');
       recommendations.push('Verify availability on USPTO.gov for certainty');
     }
