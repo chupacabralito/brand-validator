@@ -39,7 +39,15 @@ export class DomainService {
   constructor() {
     this.namecheapApiKey = process.env.NAMECHEAP_API_KEY || '';
     this.whoisApiKey = process.env.WHOIS_API_KEY || '';
-    console.log('DomainService initialized with real API-based domain checking');
+
+    // Log configuration status for debugging
+    console.log('DomainService initialized with:');
+    console.log('- WHOIS API:', this.whoisApiKey ? 'CONFIGURED' : 'NOT CONFIGURED');
+    console.log('- Namecheap API:', this.namecheapApiKey ? 'CONFIGURED' : 'NOT CONFIGURED');
+
+    if (!this.whoisApiKey) {
+      console.warn('⚠️  WHOIS_API_KEY not configured - domain checks will use DNS fallback (less accurate)');
+    }
   }
 
   async checkDomainAvailability(domain: string, includeAlternatives: boolean = true, bypassCache: boolean = false): Promise<DomainAvailabilityResult> {
@@ -275,13 +283,56 @@ export class DomainService {
       }
 
       const data = await response.json();
+      console.log(`DNS response for ${domain}:`, JSON.stringify(data, null, 2));
 
-      // If there are A records, domain is registered
-      const hasRecords = data.Answer && data.Answer.length > 0;
+      // Check for Answer records (A records = domain resolves)
+      const hasAnswer = data.Answer && data.Answer.length > 0;
+      if (hasAnswer) {
+        console.log(`${domain} has A records (Answer section) - REGISTERED`);
+        return false; // Has A records = registered
+      }
 
-      return !hasRecords; // Available if NO records
+      // CRITICAL: Check for Authority records (SOA/NS records = domain is registered but parked)
+      // Many registered domains return Authority section instead of Answer
+      const hasAuthority = data.Authority && data.Authority.length > 0;
+      if (hasAuthority) {
+        // Check if Authority contains SOA or NS records (indicates domain is registered)
+        const hasSoaOrNs = data.Authority.some((record: any) =>
+          record.type === 6 || // SOA record
+          record.type === 2    // NS record
+        );
+
+        if (hasSoaOrNs) {
+          console.log(`${domain} has SOA/NS records (Authority section) - REGISTERED`);
+          return false; // Has SOA/NS records = registered
+        }
+      }
+
+      console.log(`${domain} has no DNS records - AVAILABLE`);
+      return true; // No records = available
     } catch (error) {
       console.error('DNS check error:', error);
+      // On error, try NS record check as backup
+      try {
+        const nsResponse = await fetch(`https://dns.google/resolve?name=${domain}&type=NS`, {
+          headers: { 'User-Agent': 'BrandValidator/1.0' },
+          signal: AbortSignal.timeout(3000)
+        });
+
+        if (nsResponse.ok) {
+          const nsData = await nsResponse.json();
+          const hasNS = (nsData.Answer && nsData.Answer.length > 0) ||
+                       (nsData.Authority && nsData.Authority.length > 0);
+
+          if (hasNS) {
+            console.log(`${domain} has NS records - REGISTERED`);
+            return false;
+          }
+        }
+      } catch (nsError) {
+        console.warn('NS record backup check failed:', nsError);
+      }
+
       return true; // Assume available on error (conservative)
     }
   }
