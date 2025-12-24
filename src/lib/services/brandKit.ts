@@ -149,6 +149,177 @@ Return ONLY valid JSON in this exact structure:
   }
 
   /**
+   * Generate creative content for a specific section only
+   * Used for individual section regeneration
+   */
+  async generateSectionCreative(
+    brandName: string,
+    analysis: BrandAnalysis,
+    tone: BrandTone,
+    audience?: string,
+    section?: 'tagline' | 'logoPrompt' | 'colors' | 'typography'
+  ): Promise<any> {
+    const toneDescriptions = {
+      modern: {
+        aesthetic: 'innovative, cutting-edge, tech-forward, sleek, minimalist, contemporary',
+        colorPalette: 'Modern gradient blues, electric cyan, clean whites, deep navy',
+        typography: 'Sans-serif, geometric, clean (e.g., Poppins, Inter, Montserrat)',
+      },
+      playful: {
+        aesthetic: 'fun, energetic, vibrant, creative, friendly, approachable, youthful',
+        colorPalette: 'Bright oranges, lime greens, sunny yellows, warm pinks',
+        typography: 'Rounded, friendly, bouncy (e.g., Fredoka, Nunito, Quicksand)',
+      },
+      formal: {
+        aesthetic: 'professional, trustworthy, established, premium, authoritative, sophisticated',
+        colorPalette: 'Deep charcoal, metallic gold, rich burgundy, classic navy',
+        typography: 'Serif, elegant, timeless (e.g., Playfair Display, Merriweather, Lora)',
+      }
+    };
+
+    const toneInfo = toneDescriptions[tone];
+
+    let prompt: any;
+
+    switch (section) {
+      case 'tagline':
+        prompt = {
+          system: `You are an expert brand strategist specializing in memorable taglines.`,
+          user: `Brand: "${brandName}"
+Core Meaning: ${analysis.meaning}
+Industry: ${analysis.industry}
+Emotional Associations: ${analysis.emotions.join(', ')}
+Target Audience: ${audience || 'general audience'}
+Tone: ${tone} (${toneInfo.aesthetic})
+
+Generate ONE unique tagline (10-15 words max) that:
+- References the brand's core meaning ("${analysis.meaning}")
+- Matches ${tone} tone perfectly
+- Is professional, memorable, and emotionally resonant
+
+Return ONLY valid JSON: {"tagline": "Your tagline here"}`,
+          maxTokens: 200,
+          temperature: 0.9
+        };
+        break;
+
+      case 'logoPrompt':
+        prompt = {
+          system: `You are an expert logo designer with deep understanding of visual design principles.`,
+          user: `Brand: "${brandName}"
+Core Meaning: ${analysis.meaning}
+Visual Metaphors: ${analysis.visualMetaphors.join(', ')}
+Tone: ${tone} (${toneInfo.aesthetic})
+
+Generate ONE detailed logo concept (2-3 sentences) that:
+- Uses ONE visual metaphor from: ${analysis.visualMetaphors.join(', ')}
+- Includes typography style for ${tone} aesthetic (${toneInfo.typography})
+- Includes complete color palette with 2-3 specific HEX codes (${toneInfo.colorPalette})
+- Describes overall mood, style, and design elements
+
+Return ONLY valid JSON: {"logoPrompt": "Detailed description here"}`,
+          maxTokens: 300,
+          temperature: 0.9
+        };
+        break;
+
+      case 'colors':
+        prompt = {
+          system: `You are an expert color theory specialist creating cohesive brand color palettes.`,
+          user: `Brand: "${brandName}"
+Core Meaning: ${analysis.meaning}
+Emotions: ${analysis.emotions.join(', ')}
+Tone: ${tone} (${toneInfo.aesthetic})
+Suggested Palette: ${toneInfo.colorPalette}
+
+Generate a cohesive 3-color palette with specific HEX codes that:
+- Reflects ${tone} aesthetic
+- Evokes: ${analysis.emotions.join(', ')}
+- Works well together visually
+
+Return ONLY valid JSON:
+{
+  "colors": {
+    "primary": "#HEXCODE",
+    "secondary": "#HEXCODE",
+    "accent": "#HEXCODE"
+  }
+}`,
+          maxTokens: 200,
+          temperature: 0.9
+        };
+        break;
+
+      case 'typography':
+        prompt = {
+          system: `You are an expert typographer selecting fonts that match brand aesthetics.`,
+          user: `Brand: "${brandName}"
+Tone: ${tone} (${toneInfo.aesthetic})
+Typography Style: ${toneInfo.typography}
+
+Select 2 complementary fonts (heading and body) that:
+- Match ${tone} aesthetic perfectly
+- Work well together
+- Are professional and web-safe
+
+Return ONLY valid JSON:
+{
+  "typography": {
+    "heading": "Font Name",
+    "body": "Font Name"
+  }
+}`,
+          maxTokens: 150,
+          temperature: 0.8
+        };
+        break;
+    }
+
+    const response = await this.aiService.generateContent(prompt);
+
+    // Parse the JSON response
+    try {
+      const cleaned = response
+        .replace(/```json\s*/g, '')
+        .replace(/```\s*/g, '')
+        .trim();
+
+      const jsonStart = cleaned.indexOf('{');
+      const jsonEnd = cleaned.lastIndexOf('}');
+
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        const jsonStr = cleaned.substring(jsonStart, jsonEnd + 1);
+        const parsed = JSON.parse(jsonStr);
+
+        // Return just the section data
+        if (section === 'tagline') return parsed.tagline;
+        if (section === 'logoPrompt') return parsed.logoPrompt;
+        if (section === 'colors') return parsed.colors;
+        if (section === 'typography') return parsed.typography;
+      }
+    } catch (error) {
+      console.error(`Failed to parse ${section} response:`, error);
+    }
+
+    // Fallback values
+    const fallbacks: any = {
+      tagline: 'Innovation meets excellence',
+      logoPrompt: 'Modern minimalist logo with clean typography and bold colors',
+      colors: {
+        primary: '#1E40AF',
+        secondary: '#3B82F6',
+        accent: '#60A5FA'
+      },
+      typography: {
+        heading: 'Inter',
+        body: 'Inter'
+      }
+    };
+
+    return fallbacks[section];
+  }
+
+  /**
    * Analyze brand meaning (Step 1 - cached per brand name)
    */
   private async analyzeBrandMeaning(brandName: string, idea: string): Promise<BrandAnalysis> {

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { brandName, tone, searchTerm, regenerate, audience } = body;
+    const { brandName, tone, searchTerm, regenerate, audience, regenerateOnly } = body;
 
     if (!brandName || !tone || !searchTerm) {
       return NextResponse.json(
@@ -29,6 +29,23 @@ export async function POST(request: NextRequest) {
     const analysis = await (brandKitService as any).analyzeBrandMeaning(brandName, searchTerm);
 
     // Step 2: Generate tone-specific creative
+    // If regenerateOnly is specified, only regenerate that specific section
+    if (regenerateOnly) {
+      const sectionCreative = await brandKitService.generateSectionCreative(
+        brandName,
+        analysis,
+        tone as BrandTone,
+        audience,
+        regenerateOnly
+      );
+
+      return NextResponse.json({
+        success: true,
+        [regenerateOnly]: sectionCreative
+      });
+    }
+
+    // Otherwise, generate all sections
     const toneCreative = await brandKitService.generateToneCreative(
       brandName,
       analysis,

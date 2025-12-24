@@ -66,7 +66,49 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
     }
   };
 
-  // Handle "Generate Again"
+  // State for tracking which section is regenerating
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
+
+  // Handle regenerating specific section
+  const handleRegenerateSection = async (section: 'tagline' | 'logoPrompt' | 'colors' | 'typography') => {
+    if (!brandKit || !currentTone) return;
+
+    setRegeneratingSection(section);
+
+    try {
+      const response = await fetch('/api/brand-kit/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName: brandKit.brandName,
+          tone: selectedTone,
+          searchTerm: searchTerm || brandKit.brandName,
+          audience: 'general audience',
+          regenerate: true,
+          regenerateOnly: section  // Request regeneration of specific section only
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to regenerate ${section}`);
+      }
+
+      const data = await response.json();
+
+      // Update only the regenerated section
+      brandKit.tones[selectedTone] = {
+        ...currentTone,
+        [section]: data[section]
+      };
+
+    } catch (error) {
+      console.error(`Failed to regenerate ${section}:`, error);
+    } finally {
+      setRegeneratingSection(null);
+    }
+  };
+
+  // Handle "Generate Again" - regenerates all sections
   const handleGenerateAgain = async () => {
     if (!brandKit) return;
 
@@ -216,13 +258,37 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
         <div className="space-y-4">
           {/* Tagline */}
           <div>
-            <h3 className="font-semibold text-white text-sm mb-2">Tagline</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-white text-sm">Tagline</h3>
+              <button
+                onClick={() => handleRegenerateSection('tagline')}
+                disabled={regeneratingSection !== null}
+                className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Regenerate tagline"
+              >
+                <svg className={`w-4 h-4 ${regeneratingSection === 'tagline' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
             <p className="text-sm text-gray-300 italic">"{currentTone.tagline}"</p>
           </div>
 
           {/* Logo Concept */}
           <div>
-            <h3 className="font-semibold text-white text-sm mb-2">Logo Concept</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-white text-sm">Logo Concept</h3>
+              <button
+                onClick={() => handleRegenerateSection('logoPrompt')}
+                disabled={regeneratingSection !== null}
+                className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Regenerate logo concept"
+              >
+                <svg className={`w-4 h-4 ${regeneratingSection === 'logoPrompt' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
             <InfoBox variant="neutral">
               <p className="text-xs text-gray-300">
                 {currentTone.logoPrompt}
@@ -232,7 +298,19 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
 
           {/* Colors */}
           <div>
-            <h3 className="font-semibold text-white text-sm mb-2">Colors</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-white text-sm">Colors</h3>
+              <button
+                onClick={() => handleRegenerateSection('colors')}
+                disabled={regeneratingSection !== null}
+                className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Regenerate colors"
+              >
+                <svg className={`w-4 h-4 ${regeneratingSection === 'colors' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
             <div className="flex gap-2">
               <div className="flex-1">
                 <div
@@ -262,7 +340,19 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
 
           {/* Typography */}
           <div>
-            <h3 className="font-semibold text-white text-sm mb-2">Typography</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-white text-sm">Typography</h3>
+              <button
+                onClick={() => handleRegenerateSection('typography')}
+                disabled={regeneratingSection !== null}
+                className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Regenerate typography"
+              >
+                <svg className={`w-4 h-4 ${regeneratingSection === 'typography' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
             <div className="space-y-1 text-xs text-gray-300">
               <div><span className="text-gray-500">Heading:</span> {currentTone.typography.heading}</div>
               <div><span className="text-gray-500">Body:</span> {currentTone.typography.body}</div>
