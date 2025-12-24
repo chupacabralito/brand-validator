@@ -7,16 +7,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Domain Hunk - Domain Validation, Brand Kits & IP Guidance',
   description: 'Find your perfect domain with Domain Hunk. Check domain availability, generate brand kits, validate trademarks, and get IP guidance for your business ideas.',
-  icons: {
-    icon: [
-      { url: '/favicon-16.png?v=20241224', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32.png?v=20241224', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon.ico?v=20241224', sizes: '32x32', type: 'image/x-icon' },
-    ],
-    apple: [
-      { url: '/favicon-192.png?v=20241224', sizes: '192x192', type: 'image/png' },
-    ],
-  },
   other: {
     'impact-site-verification': '315d124e-5765-432e-b58f-621ae04015b7',
   },
