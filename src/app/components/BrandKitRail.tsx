@@ -112,10 +112,12 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       const data = await response.json();
 
       // Update only the regenerated section
-      brandKit.tones[selectedTone] = {
+      const updatedTone = {
         ...currentTone,
         [section]: data[section]
       };
+
+      brandKit.tones[selectedTone] = updatedTone;
 
       // Auto-regenerate logo concept after updating tagline, colors, or typography
       setRegeneratingSection('logoPrompt');
@@ -131,9 +133,9 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
           regenerate: true,
           regenerateOnly: 'logoPrompt',
           actualValues: {
-            tagline: brandKit.tones[selectedTone].tagline,
-            colors: brandKit.tones[selectedTone].colors,
-            typography: brandKit.tones[selectedTone].typography
+            tagline: updatedTone.tagline,
+            colors: updatedTone.colors,
+            typography: updatedTone.typography
           }
         })
       });
@@ -141,7 +143,7 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       if (logoResponse.ok) {
         const logoData = await logoResponse.json();
         brandKit.tones[selectedTone] = {
-          ...brandKit.tones[selectedTone],
+          ...updatedTone,
           logoPrompt: logoData.logoPrompt
         };
       }
