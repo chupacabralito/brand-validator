@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { brandName, tone, searchTerm, regenerate, audience, regenerateOnly } = body;
+    const { brandName, tone, searchTerm, regenerate, audience, regenerateOnly, actualValues } = body;
 
     if (!brandName || !tone || !searchTerm) {
       return NextResponse.json(
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
         analysis,
         tone as BrandTone,
         audience,
-        regenerateOnly
+        regenerateOnly,
+        actualValues  // Pass actual values for logo prompt generation
       );
 
       return NextResponse.json({

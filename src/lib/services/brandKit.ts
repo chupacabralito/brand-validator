@@ -157,7 +157,12 @@ Return ONLY valid JSON in this exact structure:
     analysis: BrandAnalysis,
     tone: BrandTone,
     audience?: string,
-    section?: 'tagline' | 'logoPrompt' | 'colors' | 'typography'
+    section?: 'tagline' | 'logoPrompt' | 'colors' | 'typography',
+    actualValues?: {
+      tagline?: string;
+      colors?: { primary: string; secondary: string; accent: string };
+      typography?: { heading: string; body: string };
+    }
   ): Promise<any> {
     const toneDescriptions = {
       modern: {
@@ -204,17 +209,27 @@ Return ONLY valid JSON: {"tagline": "Your tagline here"}`,
         break;
 
       case 'logoPrompt':
+        // Use actual generated values if available, otherwise fall back to tone descriptions
+        const actualColors = actualValues?.colors
+          ? `${actualValues.colors.primary}, ${actualValues.colors.secondary}, ${actualValues.colors.accent}`
+          : toneInfo.colorPalette;
+        const actualTypography = actualValues?.typography
+          ? `${actualValues.typography.heading} for headings, ${actualValues.typography.body} for body text`
+          : toneInfo.typography;
+        const actualTagline = actualValues?.tagline || '';
+
         prompt = {
           system: `You are an expert logo designer with deep understanding of visual design principles.`,
           user: `Brand: "${brandName}"
 Core Meaning: ${analysis.meaning}
 Visual Metaphors: ${analysis.visualMetaphors.join(', ')}
-Tone: ${tone} (${toneInfo.aesthetic})
+Tone: ${tone} (${toneInfo.aesthetic})${actualTagline ? `\nTagline: "${actualTagline}"` : ''}
 
 Generate ONE detailed logo concept (2-3 sentences) that:
 - Uses ONE visual metaphor from: ${analysis.visualMetaphors.join(', ')}
-- Includes typography style for ${tone} aesthetic (${toneInfo.typography})
-- Includes complete color palette with 2-3 specific HEX codes (${toneInfo.colorPalette})
+- Incorporates these EXACT fonts: ${actualTypography}
+- Incorporates these EXACT colors: ${actualColors}
+- References the tagline theme${actualTagline ? ` ("${actualTagline}")` : ''}
 - Describes overall mood, style, and design elements
 
 Return ONLY valid JSON: {"logoPrompt": "Detailed description here"}`,
