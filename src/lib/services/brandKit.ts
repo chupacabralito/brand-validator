@@ -302,7 +302,7 @@ Return ONLY valid JSON:
     }
 
     // Fallback values
-    const fallbacks = {
+    const fallbacks: Record<'tagline' | 'logoPrompt' | 'colors' | 'typography', any> = {
       tagline: 'Innovation meets excellence',
       logoPrompt: 'Modern minimalist logo with clean typography and bold colors',
       colors: {
