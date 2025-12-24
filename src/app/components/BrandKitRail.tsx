@@ -80,6 +80,7 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
 
   // Handle regenerating specific section
   const handleRegenerateSection = async (section: 'tagline' | 'logoPrompt' | 'colors' | 'typography') => {
+    const currentTone = brandKit?.tones[selectedTone];
     if (!brandKit || !currentTone) return;
 
     // Regenerating = design change, disable top CTA
