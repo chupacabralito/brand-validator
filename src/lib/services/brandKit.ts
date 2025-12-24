@@ -302,7 +302,7 @@ Return ONLY valid JSON:
     }
 
     // Fallback values
-    const fallbacks: any = {
+    const fallbacks = {
       tagline: 'Innovation meets excellence',
       logoPrompt: 'Modern minimalist logo with clean typography and bold colors',
       colors: {
@@ -316,7 +316,7 @@ Return ONLY valid JSON:
       }
     };
 
-    return fallbacks[section];
+    return section ? fallbacks[section] : fallbacks.tagline;
   }
 
   /**
