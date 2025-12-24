@@ -441,7 +441,7 @@ export default function Home() {
           <div className="flex items-center justify-center mb-6">
             <div className="mr-3">
               <Image
-                src="/logo.png"
+                src="/logo-new.png"
                 alt="Domain Hunk Logo"
                 width={64}
                 height={64}

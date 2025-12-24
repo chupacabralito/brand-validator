@@ -293,18 +293,24 @@ export class ProgressiveDomainService {
       // Many registered domains return Authority section instead of Answer
       const hasAuthority = data.Authority && data.Authority.length > 0;
       if (hasAuthority) {
-        // Check if Authority contains SOA or NS records (indicates domain is registered)
-        const hasSoaOrNs = data.Authority.some((record: any) =>
-          record.type === 6 || // SOA record
-          record.type === 2    // NS record
-        );
+        // IMPORTANT: Must check if Authority records are for the DOMAIN, not just the TLD
+        // NXDOMAIN responses include TLD's SOA (e.g., "com." for unregistered .com domains)
+        // Registered domains have their own SOA/NS (e.g., "example.com." for example.com)
+        const domainAuthority = data.Authority.some((record: any) => {
+          const recordName = record.name?.toLowerCase() || '';
+          const queryDomain = domain.toLowerCase() + '.'; // DNS names end with dot
 
-        if (hasSoaOrNs) {
-          return true; // Has SOA/NS records = registered
+          // Check if this Authority record is for the actual domain (not just TLD)
+          return (record.type === 6 || record.type === 2) && // SOA or NS
+                 recordName === queryDomain; // Exact match for domain
+        });
+
+        if (domainAuthority) {
+          return true; // Has domain-specific SOA/NS records = registered
         }
       }
 
-      return false; // No records = available
+      return false; // No records or only TLD records = available
     } catch {
       return false;
     }

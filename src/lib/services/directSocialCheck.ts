@@ -34,15 +34,24 @@ export class DirectSocialCheckService {
   private readonly MAX_REQUESTS_PER_MINUTE = 10;
 
   /**
+   * Platforms that CANNOT be reliably verified via HTTP status codes
+   * These platforms return 200 for both existing and non-existing accounts
+   * They require content parsing or API access instead
+   */
+  private readonly UNRELIABLE_HTTP_PLATFORMS = new Set([
+    'instagram',  // Returns 200 with "Page isn't available" message
+    'facebook',   // Returns 200 with error page
+    'tiktok'      // Returns 200 or 403 inconsistently
+  ]);
+
+  /**
    * Platform URL patterns for direct HTTP checks
+   * NOTE: Instagram, Facebook, TikTok excluded - see UNRELIABLE_HTTP_PLATFORMS
    */
   private platformUrls: Record<string, (handle: string) => string> = {
-    instagram: (handle) => `https://www.instagram.com/${handle}/`,
-    tiktok: (handle) => `https://www.tiktok.com/@${handle}`,
     twitter: (handle) => `https://twitter.com/${handle}`,
     youtube: (handle) => `https://www.youtube.com/@${handle}`,
     linkedin: (handle) => `https://www.linkedin.com/in/${handle}`,
-    facebook: (handle) => `https://www.facebook.com/${handle}`,
     github: (handle) => `https://github.com/${handle}`,
     reddit: (handle) => `https://www.reddit.com/user/${handle}`,
     twitch: (handle) => `https://www.twitch.tv/${handle}`,
@@ -116,6 +125,12 @@ export class DirectSocialCheckService {
     handle: string,
     heuristicConfidence: number
   ): Promise<DirectCheckResult | null> {
+    // Skip platforms that cannot be reliably verified via HTTP
+    if (this.UNRELIABLE_HTTP_PLATFORMS.has(platform.toLowerCase())) {
+      console.log(`Skipping HTTP check for ${platform}/${handle} - platform requires content parsing (unreliable via HTTP status codes)`);
+      return null;
+    }
+
     // Only check if heuristics are uncertain (confidence < 85%)
     if (heuristicConfidence >= 85) {
       console.log(`Skipping HTTP check for ${platform}/${handle} - heuristics confident (${heuristicConfidence}%)`);

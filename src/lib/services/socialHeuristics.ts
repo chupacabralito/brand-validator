@@ -88,6 +88,18 @@ const PROFESSIONAL_TERMS = new Set([
   'marketing', 'business', 'startup', 'company', 'brand', 'media', 'content', 'influencer'
 ]);
 
+const CELEBRITY_NAMES = new Set([
+  // Tech/Business leaders (single names that are definitely taken)
+  'elon', 'musk', 'elonmusk', 'bezos', 'gates', 'zuckerberg', 'buffett', 'jobs', 'cook', 'nadella',
+  'pichai', 'dorsey', 'jack', 'trump', 'biden', 'obama', 'oprah', 'kardashian', 'jenner', 'swift',
+  'bieber', 'rihanna', 'drake', 'beyonce', 'lebron', 'messi', 'ronaldo', 'brady', 'mahomes',
+  // Single-name celebrities/brands
+  'nike', 'adidas', 'gucci', 'prada', 'chanel', 'versace', 'rolex', 'ferrari', 'lamborghini',
+  'porsche', 'bmw', 'mercedes', 'tesla', 'ford', 'toyota', 'honda', 'samsung', 'lg', 'sony',
+  // Common brand/celebrity word fragments
+  'kardashian', 'jenner', 'hadid', 'gigi', 'bella', 'kendall', 'kylie', 'kim', 'khloe', 'kourtney'
+]);
+
 interface HeuristicScore {
   available: boolean;
   confidence: number; // 0-100, how confident we are
@@ -118,7 +130,17 @@ export class SocialHandleHeuristics {
       };
     }
 
-    // PRIORITY CHECK 2: Reserved/system words (decisive)
+    // PRIORITY CHECK 2: Celebrity/Famous People (decisive)
+    if (CELEBRITY_NAMES.has(clean)) {
+      return {
+        available: false,
+        confidence: 99,
+        score: 100,
+        factors: ['Celebrity or famous person name']
+      };
+    }
+
+    // PRIORITY CHECK 3: Reserved/system words (decisive)
     if (RESERVED_WORDS.has(clean)) {
       return {
         available: false,
@@ -128,7 +150,7 @@ export class SocialHandleHeuristics {
       };
     }
 
-    // PRIORITY CHECK 3: Very short handles (3 chars or less - almost always taken)
+    // PRIORITY CHECK 4: Very short handles (3 chars or less - almost always taken)
     if (length <= 3) {
       return {
         available: false,
@@ -138,7 +160,7 @@ export class SocialHandleHeuristics {
       };
     }
 
-    // PRIORITY CHECK 4: Common first names (very likely taken)
+    // PRIORITY CHECK 5: Common first names (very likely taken)
     if (COMMON_FIRST_NAMES.has(clean)) {
       return {
         available: false,
@@ -148,7 +170,7 @@ export class SocialHandleHeuristics {
       };
     }
 
-    // PRIORITY CHECK 5: First name + surname patterns (highly likely taken)
+    // PRIORITY CHECK 6: First name + surname patterns (highly likely taken)
     // Checks for patterns like "johndoe", "janesmith", "alexjohnson"
     for (const firstName of COMMON_FIRST_NAMES) {
       if (clean.startsWith(firstName) && clean.length > firstName.length + 2) {
