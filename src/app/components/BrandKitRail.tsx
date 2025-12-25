@@ -378,26 +378,6 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
             <p className="text-sm text-gray-300 italic">"{currentTone.tagline}"</p>
           </div>
 
-          {/* Logo Concept - Auto-generated from other elements */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-white text-sm">Logo Concept</h3>
-              {regeneratingSection === 'logoPrompt' && (
-                <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-            </div>
-            <InfoBox variant="neutral">
-              <p className="text-xs text-gray-300">
-                {currentTone.logoPrompt}
-              </p>
-            </InfoBox>
-            <p className="text-xs text-gray-400 mt-1 italic">
-              Updates automatically when you change tagline, colors, or typography
-            </p>
-          </div>
-
           {/* Colors */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -459,6 +439,26 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
               <div><span className="text-gray-500">Heading:</span> {currentTone.typography.heading}</div>
               <div><span className="text-gray-500">Body:</span> {currentTone.typography.body}</div>
             </div>
+          </div>
+
+          {/* Logo Concept - Auto-generated from other elements */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-white text-sm">Logo Concept</h3>
+              {regeneratingSection === 'logoPrompt' && (
+                <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+            </div>
+            <InfoBox variant="neutral">
+              <p className="text-xs text-gray-300">
+                {currentTone.logoPrompt}
+              </p>
+            </InfoBox>
+            <p className="text-xs text-gray-400 mt-1 italic">
+              Updates automatically when you change tagline, colors, or typography
+            </p>
           </div>
 
           {/* Finalize Design Button */}
