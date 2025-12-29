@@ -210,8 +210,16 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
     // Brief success state
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Smooth scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Smart scroll: Scroll to Brand Kit container (not page top)
+    // This keeps the "Create Logo with AI" button visible in the viewport
+    const brandKitContainer = document.querySelector('[data-container-id="brand-kit"]');
+    if (brandKitContainer) {
+      brandKitContainer.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',      // Align container to top of viewport
+        inline: 'nearest'    // Don't scroll horizontally
+      });
+    }
 
     // Reset success state
     setTimeout(() => setJustFinalized(false), 1000);
@@ -292,6 +300,7 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
       score={brandKit.brandName}
       scoreColor="blue"
       color="orange"
+      data-container-id="brand-kit"
     >
       {/* PRIMARY CTA - Create Logo */}
       <div className="mb-6">

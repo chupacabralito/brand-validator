@@ -10,6 +10,7 @@ interface StandardContainerProps {
   children: React.ReactNode;
   color: 'blue' | 'green' | 'purple' | 'orange' | 'indigo' | 'pink';
   className?: string;
+  'data-container-id'?: string;
 }
 
 const colorClasses = {
@@ -67,7 +68,8 @@ function StandardContainer({
   scoreColor = 'blue',
   children,
   color,
-  className = ''
+  className = '',
+  'data-container-id': dataContainerId
 }: StandardContainerProps) {
   const colors = colorClasses[color];
   const scoreTextColor = scoreColorClasses[scoreColor];
@@ -84,7 +86,10 @@ function StandardContainer({
   const scoreTextSize = score ? getScoreTextSize(score) : 'text-2xl';
 
   return (
-    <div className={`bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 ${className}`}>
+    <div
+      className={`bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 ${className}`}
+      {...(dataContainerId && { 'data-container-id': dataContainerId })}
+    >
       {/* H1 - Logo and Title */}
       <div className="flex items-center mb-4">
         <div className={`w-10 h-10 ${colors.iconBg} rounded-lg flex items-center justify-center mr-3`}>
