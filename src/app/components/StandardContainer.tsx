@@ -60,17 +60,28 @@ const scoreColorClasses = {
   orange: 'text-orange-400'
 };
 
-function StandardContainer({ 
-  icon, 
-  title, 
-  score, 
+function StandardContainer({
+  icon,
+  title,
+  score,
   scoreColor = 'blue',
-  children, 
+  children,
   color,
   className = ''
 }: StandardContainerProps) {
   const colors = colorClasses[color];
   const scoreTextColor = scoreColorClasses[scoreColor];
+
+  // Dynamic text sizing based on string length
+  const getScoreTextSize = (text: string) => {
+    const length = text.length;
+    if (length <= 15) return 'text-2xl';      // Short: large text
+    if (length <= 25) return 'text-xl';       // Medium: medium text
+    if (length <= 40) return 'text-lg';       // Long: smaller text
+    return 'text-base';                       // Very long: base text
+  };
+
+  const scoreTextSize = score ? getScoreTextSize(score) : 'text-2xl';
 
   return (
     <div className={`bg-gray-900 rounded-xl shadow-lg border border-gray-800 p-6 ${className}`}>
@@ -83,11 +94,11 @@ function StandardContainer({
         </div>
         <h1 className="text-xl font-bold text-white">{title}</h1>
       </div>
-      
+
       {/* H2 - Overarching Score/Assessment */}
       {score && (
         <div className={`mb-6 p-4 ${colors.scoreBg} rounded-lg border border-gray-700`}>
-          <h2 className={`text-2xl font-bold ${scoreTextColor}`}>
+          <h2 className={`${scoreTextSize} font-bold ${scoreTextColor} break-words`}>
             {score}
           </h2>
         </div>
