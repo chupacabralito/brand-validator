@@ -63,10 +63,10 @@ export class CompositeScoreService {
    */
   calculateCompositeScore(input: CompositeScoreInput): CompositeScoreResult {
     const weights = {
-      domain: 0.25,    // 25% - Domain availability and quality (reduced from 35%)
-      social: 0.20,    // 20% - Social media handle availability (reduced from 25%)
-      trademark: 0.30, // 30% - Trademark risk (increased from 25% - most important)
-      brand: 0.25      // 25% - Brand name quality (increased from 15% - very important)
+      domain: 0.33,    // 33% - Domain availability and quality
+      social: 0.27,    // 27% - Social media handle availability
+      trademark: 0.40, // 40% - Trademark risk (most important)
+      brand: 0.00      // 0% - Brand Kit excluded from composite score per user requirement
     };
 
     const domainScore = this.calculateDomainScore(input.domainResult);

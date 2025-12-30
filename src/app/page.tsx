@@ -98,32 +98,27 @@ export default function Home() {
     }
   }, [domainResult, socialResult, trademarkResult, brandKit, selectedTrademarkCategory]);
 
-  // Calculate composite score ONLY when ALL critical results are available
+  // Calculate composite score when core results are available (domain, social, trademark)
+  // Brand Kit is NOT part of composite score calculation
   useEffect(() => {
-    // Check if we have all the results we expect based on search type
-    const hasAllResults = domainResult && socialResult && trademarkResult && brandKit;
+    // Check if we have the core results (Brand Kit excluded per user requirement)
+    const hasCoreResults = domainResult && socialResult && trademarkResult;
 
-    if (hasAllResults) {
-      console.log('All results available, calculating composite score...');
+    if (hasCoreResults) {
+      console.log('Core results available, calculating composite score...');
       console.log('Domain:', domainResult);
       console.log('Social:', socialResult);
       console.log('Trademark:', trademarkResult);
-      console.log('Brand:', brandKit);
 
-      // Small delay to ensure all state updates have settled
-      const timer = setTimeout(() => {
-        calculateCompositeScore();
-      }, 300);
-
-      return () => clearTimeout(timer);
+      // Calculate immediately - no artificial delay needed
+      calculateCompositeScore();
     } else {
-      console.log('Waiting for all results before calculating composite score...');
+      console.log('Waiting for core results before calculating composite score...');
       console.log('Has domain:', !!domainResult);
       console.log('Has social:', !!socialResult);
       console.log('Has trademark:', !!trademarkResult);
-      console.log('Has brand:', !!brandKit);
     }
-  }, [domainResult, socialResult, trademarkResult, brandKit, calculateCompositeScore]);
+  }, [domainResult, socialResult, trademarkResult, calculateCompositeScore]);
 
   // OPTIMIZATION: Cache results when composite score is calculated
   useEffect(() => {
