@@ -11,6 +11,8 @@
  * - Respects platform rate limits to avoid IP bans
  */
 
+import { BoundedMemoryCache } from '@/lib/utils/boundedCache';
+
 interface DirectCheckResult {
   platform: string;
   handle: string;
@@ -21,15 +23,12 @@ interface DirectCheckResult {
   statusCode?: number;
 }
 
-interface CacheEntry {
-  result: DirectCheckResult;
-  timestamp: number;
-}
-
 export class DirectSocialCheckService {
-  private cache: Map<string, CacheEntry> = new Map();
+  private cache = new BoundedMemoryCache<DirectCheckResult>({
+    ttlMs: 24 * 60 * 60 * 1000,
+    maxEntries: 500
+  });
   private requestLog: number[] = []; // Timestamps of recent requests
-  private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
   private readonly RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
   private readonly MAX_REQUESTS_PER_MINUTE = 10;
 
@@ -90,15 +89,7 @@ export class DirectSocialCheckService {
     const cacheKey = this.getCacheKey(platform, handle);
     const cached = this.cache.get(cacheKey);
 
-    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
-      return { ...cached.result, method: 'cached' };
-    }
-
-    if (cached) {
-      this.cache.delete(cacheKey);
-    }
-
-    return null;
+    return cached ? { ...cached, method: 'cached' } : null;
   }
 
   /**
@@ -106,10 +97,7 @@ export class DirectSocialCheckService {
    */
   private cacheResult(platform: string, handle: string, result: DirectCheckResult): void {
     const cacheKey = this.getCacheKey(platform, handle);
-    this.cache.set(cacheKey, {
-      result,
-      timestamp: Date.now()
-    });
+    this.cache.set(cacheKey, result);
   }
 
   /**
@@ -171,8 +159,8 @@ export class DirectSocialCheckService {
         }
       });
 
-      const exists = this.interpretStatusCode(response.status, platform);
-      const confidence = this.calculateConfidence(response.status, platform);
+      const exists = this.interpretStatusCode(response.status);
+      const confidence = this.calculateConfidence(response.status);
 
       const result: DirectCheckResult = {
         platform,
@@ -199,7 +187,7 @@ export class DirectSocialCheckService {
   /**
    * Interpret HTTP status code to determine if handle exists
    */
-  private interpretStatusCode(statusCode: number, platform: string): boolean {
+  private interpretStatusCode(statusCode: number): boolean {
     // 200 = Profile page loaded = Handle exists/taken
     if (statusCode === 200) return true;
 
@@ -227,16 +215,13 @@ export class DirectSocialCheckService {
   /**
    * Calculate confidence based on status code and platform
    */
-  private calculateConfidence(statusCode: number, platform: string): number {
+  private calculateConfidence(statusCode: number): number {
     // 200 = High confidence handle exists
     if (statusCode === 200) return 90;
 
     // 404 = Medium-high confidence available
     // Lower for Instagram/TikTok due to banned/reserved handles
     if (statusCode === 404) {
-      if (platform === 'instagram' || platform === 'tiktok') {
-        return 70; // Could be banned/reserved
-      }
       return 80; // Higher confidence for other platforms
     }
 

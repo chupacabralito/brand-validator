@@ -1,46 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BrandKitService, BrandKitInput } from '@/lib/services/brandKit';
+import { BrandKitService } from '@/lib/services/brandKit';
+import { AIProviderError, toPublicAIError } from '@/lib/utils/aiErrors';
+import {
+  parseBrandKitRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { idea, tone, audience, domain } = await request.json();
-
-    if (!idea || typeof idea !== 'string') {
-      return NextResponse.json(
-        { error: 'Idea is required' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
     }
 
-    // Tone is optional - defaults to generating "modern" first
-    if (tone && !['modern', 'playful', 'formal'].includes(tone)) {
-      return NextResponse.json(
-        { error: 'Tone must be one of: modern, playful, formal' },
-        { status: 400 }
-      );
+    const input = parseBrandKitRequest(body.data);
+    if (!input.success) {
+      return validationErrorResponse(input);
     }
-
-    const input: BrandKitInput = {
-      idea,
-      tone,
-      audience,
-      domain
-    };
 
     const brandKitService = new BrandKitService(process.env.AI_MODEL || 'claude-3.5');
-    const result = await brandKitService.generateBrandKit(input);
+    const result = await brandKitService.generateBrandKit(input.data);
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Brand kit generation error:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to generate brand kit',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    if (error instanceof AIProviderError) {
+      console.error('Brand kit generation error:', {
+        provider: error.provider,
+        status: error.status,
+        code: error.code,
+        message: error.providerMessage
+      });
+    } else {
+      console.error('Brand kit generation error:', error);
+    }
+
+    const publicError = toPublicAIError(error, 'Brand kit');
+    return NextResponse.json(publicError.body, { status: publicError.status });
   }
 }

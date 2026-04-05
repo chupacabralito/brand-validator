@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import SearchBox from '@/app/components/SearchBox';
 import DomainRail from '@/app/components/DomainRail';
@@ -38,8 +38,8 @@ const getApiErrorMessage = (value: unknown, fallback: string): string => {
     return fallback;
   }
 
-  if (typeof value.details === 'string' && value.details.trim()) {
-    return value.details;
+  if (typeof value.message === 'string' && value.message.trim()) {
+    return value.message;
   }
 
   if (typeof value.error === 'string' && value.error.trim()) {
@@ -63,6 +63,25 @@ const parseBrandKitResponse = async (response: Response): Promise<BrandKit> => {
   return data;
 };
 
+const parseJsonResponse = async <T,>(
+  response: Response,
+  fallbackMessage: string = `Request failed with status ${response.status}`
+): Promise<T> => {
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(data, fallbackMessage));
+  }
+
+  return data as T;
+};
+
+const isAbortError = (error: unknown): boolean => {
+  return error instanceof Error && error.name === 'AbortError';
+};
+
+type ResponseParser<T> = (response: Response) => Promise<T>;
+
 export default function Home() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -85,112 +104,129 @@ export default function Home() {
   // Show results grid flag - appears immediately on search
   const [showResults, setShowResults] = useState(false);
 
-  // Debug: Log when composite result changes
-  useEffect(() => {
-    console.log('Composite result state changed:', compositeResult);
-  }, [compositeResult]);
+  const activeSearchIdRef = useRef(0);
+  const activeRequestControllersRef = useRef<AbortController[]>([]);
 
-  const handleDomainCheck = async (domain: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/domain-check-fast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await response.json();
-      setDomainResult(data);
-    } catch (error) {
-      console.error('Domain check failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const cancelActiveRequests = useCallback(() => {
+    activeRequestControllersRef.current.forEach((controller) => controller.abort());
+    activeRequestControllersRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cancelActiveRequests();
+    };
+  }, [cancelActiveRequests]);
+
+  const createRequestSignal = useCallback((timeoutMs: number) => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    activeRequestControllersRef.current.push(controller);
+
+    const release = () => {
+      window.clearTimeout(timeoutId);
+      activeRequestControllersRef.current = activeRequestControllersRef.current.filter(
+        (currentController) => currentController !== controller
+      );
+    };
+
+    return {
+      signal: controller.signal,
+      release,
+    };
+  }, []);
+
+  const postJson = useCallback(
+    async function postJson<T>(
+      url: string,
+      body: unknown,
+      timeoutMs: number,
+      parser?: ResponseParser<T>
+    ): Promise<T> {
+      const { signal, release } = createRequestSignal(timeoutMs);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal,
+        });
+
+        if (parser) {
+          return parser(response);
+        }
+
+        return parseJsonResponse<T>(response);
+      } finally {
+        release();
+      }
+    },
+    [createRequestSignal]
+  );
 
   const calculateCompositeScore = useCallback(async () => {
-    console.log('=== COMPOSITE SCORE CALCULATION ===');
-    console.log('Domain Result:', domainResult);
-    console.log('Social Result:', socialResult);
-    console.log('Trademark Result:', trademarkResult);
-    console.log('Brand Kit:', brandKit);
-
-    if (!domainResult && !socialResult && !trademarkResult && !brandKit) {
-      console.log('No results available for composite score');
+    if (!domainResult || !socialResult || !trademarkResult) {
       setCompositeResult(null);
       return;
     }
 
+    const searchId = activeSearchIdRef.current;
+
     try {
-      console.log('Sending request to composite score API...');
-      const response = await fetch('/api/composite-score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await postJson<CompositeScoreResult>(
+        '/api/composite-score',
+        {
           domainResult,
           socialResult,
           trademarkResult,
-          brandKit,
-          selectedTrademarkCategory
-        })
-      });
+          selectedTrademarkCategory,
+        },
+        10000,
+        (response) => parseJsonResponse<CompositeScoreResult>(response, 'Failed to calculate composite score')
+      );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (activeSearchIdRef.current === searchId) {
+        setCompositeResult(data);
       }
-
-      const data = await response.json();
-      console.log('Composite score API response:', data);
-      setCompositeResult(data);
-      console.log('Composite result state updated');
     } catch (error) {
-      console.error('Error calculating composite score:', error);
+      if (!isAbortError(error)) {
+        console.error('Error calculating composite score:', error);
+      }
     }
-  }, [domainResult, socialResult, trademarkResult, brandKit, selectedTrademarkCategory]);
+  }, [domainResult, socialResult, trademarkResult, selectedTrademarkCategory, postJson]);
 
   // Calculate composite score when core results are available (domain, social, trademark)
   // Brand Kit is NOT part of composite score calculation
   useEffect(() => {
-    // Check if we have the core results (Brand Kit excluded per user requirement)
-    const hasCoreResults = domainResult && socialResult && trademarkResult;
-
-    if (hasCoreResults) {
-      console.log('Core results available, calculating composite score...');
-      console.log('Domain:', domainResult);
-      console.log('Social:', socialResult);
-      console.log('Trademark:', trademarkResult);
-
-      // Calculate immediately - no artificial delay needed
+    if (domainResult && socialResult && trademarkResult) {
       calculateCompositeScore();
     } else {
-      console.log('Waiting for core results before calculating composite score...');
-      console.log('Has domain:', !!domainResult);
-      console.log('Has social:', !!socialResult);
-      console.log('Has trademark:', !!trademarkResult);
+      setCompositeResult(null);
     }
-  }, [domainResult, socialResult, trademarkResult, calculateCompositeScore]);
+  }, [domainResult, socialResult, trademarkResult, selectedTrademarkCategory, calculateCompositeScore]);
 
   // OPTIMIZATION: Cache results when composite score is calculated
   useEffect(() => {
-    if (compositeResult && query) {
+    if (compositeResult && query && selectedTrademarkCategory === 'all') {
       const cacheKey = `search_${query.toLowerCase()}`;
-        const cacheData = {
-          timestamp: Date.now(),
-          domain: domainResult,
-          brand: brandKit,
-          brandError: brandKitError,
-          social: socialResult,
-          trademark: trademarkResult,
-          composite: compositeResult
-        };
+      const cacheData = {
+        timestamp: Date.now(),
+        domain: domainResult,
+        brand: brandKit,
+        brandError: brandKitError,
+        social: socialResult,
+        trademark: trademarkResult,
+        composite: compositeResult
+      };
 
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        console.log('Cached results for query:', query);
       } catch (e) {
         console.warn('Failed to cache results:', e);
       }
     }
-  }, [compositeResult, query, domainResult, brandKit, brandKitError, socialResult, trademarkResult]);
+  }, [compositeResult, query, selectedTrademarkCategory, domainResult, brandKit, brandKitError, socialResult, trademarkResult]);
 
   const handleAffiliateClick = async (partner: string, offer: string, url: string) => {
     try {
@@ -214,53 +250,28 @@ export default function Home() {
 
   const handleTrademarkCategoryChange = (category: string) => {
     setSelectedTrademarkCategory(category);
-    // Recalculate composite score when category changes
-    if (domainResult && socialResult && trademarkResult && brandKit) {
-      calculateCompositeScore();
-    }
   };
 
-  const handleDomainRefresh = async () => {
-    if (!domainResult) return;
+  const handleSearch = (searchQuery: string) => {
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) return;
 
-    console.log('Refreshing domain data...');
-    setIsLoading(true);
+    cancelActiveRequests();
+    const searchId = activeSearchIdRef.current + 1;
+    activeSearchIdRef.current = searchId;
 
-    try {
-      const response = await fetch('/api/domain-check-fast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: domainResult.query
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    let hasStoppedMainLoading = false;
+    const stopMainLoading = () => {
+      if (activeSearchIdRef.current !== searchId || hasStoppedMainLoading) {
+        return;
       }
 
-      const data = await response.json();
-      console.log('Refreshed domain data:', data);
-      setDomainResult(data);
-
-      // Recalculate composite score with fresh data
-      setTimeout(() => {
-        calculateCompositeScore();
-      }, 500);
-    } catch (error) {
-      console.error('Domain refresh failed:', error);
-    } finally {
+      hasStoppedMainLoading = true;
       setIsLoading(false);
-    }
-  };
-
-  const handleSearch = async (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
-
-    console.log('Search initiated for:', searchQuery);
+    };
 
     // OPTIMIZATION: Client-side cache check (instant for repeated searches)
-    const cacheKey = `search_${searchQuery.toLowerCase()}`;
+    const cacheKey = `search_${trimmedQuery.toLowerCase()}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
@@ -269,15 +280,20 @@ export default function Home() {
 
         // Use cache if < 5 minutes old
         if (cacheAge < 5 * 60 * 1000) {
-          console.log('Using cached results (age:', Math.floor(cacheAge / 1000), 'seconds)');
+          setQuery(trimmedQuery);
+          setSelectedTrademarkCategory('all');
           setShowResults(true);
+          setIsLoading(false);
+          setIsDomainLoading(false);
+          setIsBrandLoading(false);
+          setIsSocialLoading(false);
+          setIsTrademarkLoading(false);
           setDomainResult(cachedData.domain || null);
           setBrandKit(isBrandKitResponse(cachedData.brand) ? cachedData.brand : null);
           setBrandKitError(typeof cachedData.brandError === 'string' ? cachedData.brandError : null);
           setSocialResult(cachedData.social || null);
           setTrademarkResult(cachedData.trademark || null);
           setCompositeResult(cachedData.composite || null);
-          setQuery(searchQuery);
           return; // Skip API calls entirely!
         }
       } catch (e) {
@@ -286,7 +302,8 @@ export default function Home() {
     }
 
     setIsLoading(true);
-    setQuery(searchQuery);
+    setQuery(trimmedQuery);
+    setSelectedTrademarkCategory('all');
 
     // Show results grid immediately (empty skeleton)
     setShowResults(true);
@@ -299,191 +316,179 @@ export default function Home() {
     setTrademarkResult(null);
     setCompositeResult(null);
 
-    try {
-      // Check if it's a domain or idea
-      const isDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(searchQuery);
-      const isPotentialDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?$/.test(searchQuery) && !searchQuery.includes(' ');
+    // Check if it's a domain or idea
+    const isDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(trimmedQuery);
+    const isPotentialDomain = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?$/.test(trimmedQuery) && !trimmedQuery.includes(' ');
 
-      if (isDomain || isPotentialDomain) {
-        console.log('Domain search detected for:', searchQuery);
-        const domainRoot = searchQuery.split('.')[0];
+    if (isDomain || isPotentialDomain) {
+      const domainRoot = trimmedQuery.split('.')[0];
 
-        // Set individual loading states
-        setIsDomainLoading(true);
-        setIsBrandLoading(true);
-        setIsSocialLoading(true);
-        setIsTrademarkLoading(true);
+      setIsDomainLoading(true);
+      setIsBrandLoading(true);
+      setIsSocialLoading(true);
+      setIsTrademarkLoading(true);
 
-        // PROGRESSIVE RENDERING: Start domain check immediately (fastest API)
-        // This allows UI to update in <500ms without waiting for slow APIs
-        fetch('/api/domain-check-fast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain: searchQuery }),
-          signal: AbortSignal.timeout(5000)
-        })
-        .then(res => res.json())
-        .then(data => {
-          console.log('Domain API response (instant):', data);
+      void postJson<DomainResult>(
+        '/api/domain-check-fast',
+        { domain: trimmedQuery },
+        5000,
+        (response) => parseJsonResponse<DomainResult>(response, 'Failed to check domain availability')
+      )
+        .then((data) => {
+          if (activeSearchIdRef.current !== searchId) return;
           setDomainResult(data);
           setIsDomainLoading(false);
-          setIsLoading(false); // Stop main loading spinner
+          stopMainLoading();
         })
-        .catch(err => {
-          console.error('Domain check failed:', err);
+        .catch((error) => {
+          if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+          console.error('Domain check failed:', error);
           setIsDomainLoading(false);
+          stopMainLoading();
         });
 
-        // Brand Kit API (independent)
-        fetch('/api/brand-kit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idea: `Brand for ${searchQuery}`,
-            tone: 'modern',
-            audience: 'tech professionals',
-            domain: searchQuery
-          }),
-          signal: AbortSignal.timeout(15000)
-        })
-        .then(parseBrandKitResponse)
-        .then(data => {
-          console.log('Brand API response:', data);
+      void postJson<BrandKit>(
+        '/api/brand-kit',
+        {
+          idea: `Brand for ${trimmedQuery}`,
+          tone: 'modern',
+          audience: 'tech professionals',
+          domain: trimmedQuery,
+        },
+        15000,
+        parseBrandKitResponse
+      )
+        .then((data) => {
+          if (activeSearchIdRef.current !== searchId) return;
           setBrandKitError(null);
           setBrandKit(data);
           setIsBrandLoading(false);
+          stopMainLoading();
         })
-        .catch(err => {
-          console.error('Brand API failed:', err);
+        .catch((error) => {
+          if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+          console.error('Brand API failed:', error);
           setBrandKit(null);
-          setBrandKitError(err instanceof Error ? err.message : 'Brand kit unavailable right now');
+          setBrandKitError(error instanceof Error ? error.message : 'Brand kit unavailable right now');
           setIsBrandLoading(false);
+          stopMainLoading();
         });
 
-        // Trademark Search API (independent)
-        fetch('/api/trademark-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brandName: domainRoot }),
-          signal: AbortSignal.timeout(35000)
-        })
-        .then(res => res.json())
-        .then(data => {
-          console.log('Trademark API response:', data);
+      void postJson<TrademarkSearchResult>(
+        '/api/trademark-search',
+        { brandName: domainRoot },
+        35000,
+        (response) => parseJsonResponse<TrademarkSearchResult>(response, 'Failed to perform trademark search')
+      )
+        .then((data) => {
+          if (activeSearchIdRef.current !== searchId) return;
           setTrademarkResult(data);
           setIsTrademarkLoading(false);
+          stopMainLoading();
         })
-        .catch(err => {
-          console.error('Trademark API failed:', err);
+        .catch((error) => {
+          if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+          console.error('Trademark API failed:', error);
           setIsTrademarkLoading(false);
+          stopMainLoading();
         });
 
-        // Social Check API (independent)
-        fetch('/api/social-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handleBase: domainRoot }),
-          signal: AbortSignal.timeout(15000)
-        })
-        .then(res => res.json())
-        .then(data => {
-          console.log('Social API response:', data);
+      void postJson<SocialCheckResult>(
+        '/api/social-check',
+        { handleBase: domainRoot },
+        15000,
+        (response) => parseJsonResponse<SocialCheckResult>(response, 'Failed to check social handles')
+      )
+        .then((data) => {
+          if (activeSearchIdRef.current !== searchId) return;
           setSocialResult(data);
           setIsSocialLoading(false);
+          stopMainLoading();
         })
-        .catch(err => {
-          console.error('Social API failed:', err);
+        .catch((error) => {
+          if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+          console.error('Social API failed:', error);
           setIsSocialLoading(false);
+          stopMainLoading();
         });
 
-        // Composite score will be calculated automatically via useEffect when all results available
-
-      } else {
-        // Idea search flow - progressive loading for ideas too
-        const handleBase = searchQuery.toLowerCase().replace(/\s/g, '');
-
-        // Set individual loading states (no domain for ideas)
-        setIsDomainLoading(false);
-        setIsBrandLoading(true);
-        setIsSocialLoading(true);
-        setIsTrademarkLoading(true);
-
-        // Brand Kit API (independent)
-        fetch('/api/brand-kit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idea: searchQuery,
-            tone: 'modern',
-            audience: 'general audience'
-          }),
-          signal: AbortSignal.timeout(15000)
-        })
-        .then(parseBrandKitResponse)
-        .then(data => {
-          console.log('Brand API response:', data);
-          setBrandKitError(null);
-          setBrandKit(data);
-          setIsBrandLoading(false);
-          setIsLoading(false); // Stop main spinner after first result
-        })
-        .catch(err => {
-          console.error('Brand API failed:', err);
-          setBrandKit(null);
-          setBrandKitError(err instanceof Error ? err.message : 'Brand kit unavailable right now');
-          setIsBrandLoading(false);
-        });
-
-        // Social Check API (independent)
-        fetch('/api/social-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handleBase }),
-          signal: AbortSignal.timeout(15000)
-        })
-        .then(res => res.json())
-        .then(data => {
-          console.log('Social API response:', data);
-          setSocialResult(data);
-          setIsSocialLoading(false);
-        })
-        .catch(err => {
-          console.error('Social API failed:', err);
-          setIsSocialLoading(false);
-        });
-
-        // Trademark Search API (independent)
-        fetch('/api/trademark-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            brandName: searchQuery,
-            classes: [35, 42],
-            includeInternational: false
-          }),
-          signal: AbortSignal.timeout(35000)
-        })
-        .then(res => res.json())
-        .then(data => {
-          console.log('Trademark API response:', data);
-          setTrademarkResult(data);
-          setIsTrademarkLoading(false);
-        })
-        .catch(err => {
-          console.error('Trademark API failed:', err);
-          setIsTrademarkLoading(false);
-        });
-
-        // Composite score will be calculated automatically via useEffect
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      setIsLoading(false);
-      setIsDomainLoading(false);
-      setIsBrandLoading(false);
-      setIsSocialLoading(false);
-      setIsTrademarkLoading(false);
+      return;
     }
+
+    const handleBase = trimmedQuery.toLowerCase().replace(/\s/g, '');
+
+    setIsDomainLoading(false);
+    setIsBrandLoading(true);
+    setIsSocialLoading(true);
+    setIsTrademarkLoading(true);
+
+    void postJson<BrandKit>(
+      '/api/brand-kit',
+      {
+        idea: trimmedQuery,
+        tone: 'modern',
+        audience: 'general audience',
+      },
+      15000,
+      parseBrandKitResponse
+    )
+      .then((data) => {
+        if (activeSearchIdRef.current !== searchId) return;
+        setBrandKitError(null);
+        setBrandKit(data);
+        setIsBrandLoading(false);
+        stopMainLoading();
+      })
+      .catch((error) => {
+        if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+        console.error('Brand API failed:', error);
+        setBrandKit(null);
+        setBrandKitError(error instanceof Error ? error.message : 'Brand kit unavailable right now');
+        setIsBrandLoading(false);
+        stopMainLoading();
+      });
+
+    void postJson<SocialCheckResult>(
+      '/api/social-check',
+      { handleBase },
+      15000,
+      (response) => parseJsonResponse<SocialCheckResult>(response, 'Failed to check social handles')
+    )
+      .then((data) => {
+        if (activeSearchIdRef.current !== searchId) return;
+        setSocialResult(data);
+        setIsSocialLoading(false);
+        stopMainLoading();
+      })
+      .catch((error) => {
+        if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+        console.error('Social API failed:', error);
+        setIsSocialLoading(false);
+        stopMainLoading();
+      });
+
+    void postJson<TrademarkSearchResult>(
+      '/api/trademark-search',
+      {
+        brandName: trimmedQuery,
+        classes: [35, 42],
+        includeInternational: false,
+      },
+      35000,
+      (response) => parseJsonResponse<TrademarkSearchResult>(response, 'Failed to perform trademark search')
+    )
+      .then((data) => {
+        if (activeSearchIdRef.current !== searchId) return;
+        setTrademarkResult(data);
+        setIsTrademarkLoading(false);
+        stopMainLoading();
+      })
+      .catch((error) => {
+        if (activeSearchIdRef.current !== searchId || isAbortError(error)) return;
+        console.error('Trademark API failed:', error);
+        setIsTrademarkLoading(false);
+        stopMainLoading();
+      });
   };
 
   return (
@@ -539,7 +544,6 @@ export default function Home() {
               <DomainRail
                 domainResult={domainResult}
                 isLoading={isDomainLoading}
-                onRefresh={handleDomainRefresh}
               />
 
               {/* Middle Left Rail - Social Handles (FAST: ~2-4s) */}
@@ -561,8 +565,8 @@ export default function Home() {
               <BrandKitRail
                 brandKit={brandKit}
                 errorMessage={brandKitError}
+                onBrandKitChange={setBrandKit}
                 isLoading={isBrandLoading}
-                onCheckDomain={handleDomainCheck}
                 searchTerm={query}
               />
             </div>

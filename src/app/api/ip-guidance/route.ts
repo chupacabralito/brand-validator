@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { IPService } from '@/lib/services/ip';
+import {
+  parseIPGuidanceRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,24 +12,17 @@ const ipService = new IPService();
 
 export async function POST(request: NextRequest) {
   try {
-    const { brandName, categories } = await request.json();
-
-    if (!brandName || typeof brandName !== 'string') {
-      return NextResponse.json(
-        { error: 'Brand name is required' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
     }
 
-    // Basic brand name validation
-    if (brandName.length < 2 || brandName.length > 50) {
-      return NextResponse.json(
-        { error: 'Brand name must be between 2 and 50 characters' },
-        { status: 400 }
-      );
+    const parsed = parseIPGuidanceRequest(body.data);
+    if (!parsed.success) {
+      return validationErrorResponse(parsed);
     }
 
-    const result = ipService.generateGuidance(brandName, categories || []);
+    const result = ipService.generateGuidance(parsed.data.brandName, parsed.data.categories);
 
     return NextResponse.json(result);
   } catch (error) {

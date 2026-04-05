@@ -48,7 +48,7 @@ A comprehensive tool for validating domains, generating brand kits, and providin
    ```bash
    cp env.example .env.local
    ```
-   Fill in your API keys and affiliate IDs.
+   Fill in your API keys and affiliate IDs. `.env.local` is ignored by git and should never be committed.
 
 3. **Run the development server**:
    ```bash
@@ -75,6 +75,12 @@ A comprehensive tool for validating domains, generating brand kits, and providin
 - `AFF_ZOVIZ_ID` - Zoviz affiliate ID
 - `AFF_LOGOME_ID` - LogoMe affiliate ID
 - `AI_MODEL` - AI model to use (default: claude-3.5)
+
+## Security Notes
+
+- Keep real secrets only in `.env.local` or your deployment provider's secret store.
+- Do not copy live credentials into docs, tickets, or browser-visible API responses.
+- If a key has been exposed outside your machine, rotate it with the provider.
 
 ## API Endpoints
 

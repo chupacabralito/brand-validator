@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DomainResult } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 
@@ -22,18 +22,12 @@ interface DomainRailProps {
   domainResult: DomainResult | null;
   isLoading: boolean;
   onAffiliateClick?: (partner: string, offer: string, url: string) => void;
-  onRefresh?: () => void;
 }
 
-export default function DomainRail({ domainResult, isLoading, onAffiliateClick, onRefresh }: DomainRailProps) {
+export default function DomainRail({ domainResult, isLoading, onAffiliateClick }: DomainRailProps) {
   // State for tracking which domains are being checked
   const [checkingDomains, setCheckingDomains] = useState<Set<string>>(new Set());
   const [checkedAlternatives, setCheckedAlternatives] = useState<Map<string, AlternativeDomain>>(new Map());
-
-  // Debug logging
-  useEffect(() => {
-    console.log('DomainRail received:', { domainResult, isLoading });
-  }, [domainResult, isLoading]);
 
   // Handle checking a single unchecked domain
   const handleCheckDomain = async (domain: string) => {
@@ -78,8 +72,6 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
   };
 
   const handleAffiliateClick = (partner: string, offer: string, domain: string) => {
-    console.log('Affiliate click:', { partner, offer, domain });
-
     // For Namecheap, use Impact deep linking with encoded destination URL
     if (partner === 'namecheap') {
       // Build the final Namecheap URL with domain parameter
@@ -91,7 +83,6 @@ export default function DomainRail({ domainResult, isLoading, onAffiliateClick, 
       // Impact deep link format: base_url?u=encoded_destination
       const affiliateUrl = `https://namecheap.pxf.io/raYKqR?u=${encodedUrl}`;
 
-      console.log('Opening affiliate URL:', affiliateUrl);
       window.open(affiliateUrl, '_blank');
       return;
     }

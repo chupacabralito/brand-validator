@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CompositeScoreService, CompositeScoreInput } from '@/lib/services/compositeScore';
+import { CompositeScoreService } from '@/lib/services/compositeScore';
+import {
+  parseCompositeScoreRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,19 +12,26 @@ const compositeScoreService = new CompositeScoreService();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    console.log('Composite score API received:', body);
-    const { domainResult, socialResult, trademarkResult, brandKit } = body as CompositeScoreInput;
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
+    }
 
-    // Use LLM-enhanced brand quality scoring for more accurate results
-    const result = await compositeScoreService.calculateCompositeScoreWithLLM({
+    const parsed = parseCompositeScoreRequest(body.data);
+    if (!parsed.success) {
+      return validationErrorResponse(parsed);
+    }
+
+    const { domainResult, socialResult, trademarkResult, brandKit, selectedTrademarkCategory } = parsed.data;
+
+    const result = compositeScoreService.calculateCompositeScore({
       domainResult,
       socialResult,
       trademarkResult,
-      brandKit
+      brandKit,
+      selectedTrademarkCategory
     });
 
-    console.log('Composite score calculated (LLM-enhanced):', result);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error calculating composite score:', error);

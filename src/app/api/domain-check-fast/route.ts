@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProgressiveDomainService } from '@/lib/services/progressiveDomainService';
+import {
+  parseDomainCheckRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,25 +25,21 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { domain } = await request.json();
-
-    if (!domain || typeof domain !== 'string') {
-      return NextResponse.json(
-        { error: 'Domain is required' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
     }
+
+    const parsed = parseDomainCheckRequest(body.data);
+    if (!parsed.success) {
+      return validationErrorResponse(parsed);
+    }
+
+    const { domain } = parsed.data;
 
     // Validate domain format - accept both complete domains and name-only
-    const completeDomainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/;
-    const nameOnlyRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?$/;
-
-    if (!completeDomainRegex.test(domain) && !nameOnlyRegex.test(domain)) {
-      return NextResponse.json(
-        { error: 'Invalid domain format' },
-        { status: 400 }
-      );
-    }
+    const completeDomainRegex = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]?\.([a-z]{2,}|[a-z]{2,}\.[a-z]{2,})$/;
+    const nameOnlyRegex = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]?$/;
 
     const service = new ProgressiveDomainService();
 

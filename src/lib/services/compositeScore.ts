@@ -1,3 +1,12 @@
+import { BrandKit } from '../models/DomainResult';
+import { TrademarkSearchResult } from './trademarkSearch';
+import { BoundedMemoryCache } from '../utils/boundedCache';
+
+type ScoreDetails = {
+  score: number;
+  factors: string[];
+};
+
 export interface CompositeScoreInput {
   domainResult?: {
     available: boolean;
@@ -13,13 +22,13 @@ export interface CompositeScoreInput {
       overallRisk: 'low' | 'medium' | 'high';
       riskFactors: string[];
     };
-    exactMatches: any[];
-    similarMatches: any[];
+    exactMatches: TrademarkSearchResult['exactMatches'];
+    similarMatches: TrademarkSearchResult['similarMatches'];
   };
   brandKit?: {
     brandName: string;
     nameVariants?: Array<{ value: string; score: number }>; // Legacy field
-    tones?: any; // New structure
+    tones?: BrandKit['tones'];
   };
   selectedTrademarkCategory?: string;
 }
@@ -54,7 +63,10 @@ export interface CompositeScoreResult {
 
 export class CompositeScoreService {
   // Cache for LLM brand quality scores with reasoning (in-memory, could be Redis in production)
-  private static brandQualityCache = new Map<string, { score: number; reasoning: string }>();
+  private static brandQualityCache = new BoundedMemoryCache<{ score: number; reasoning: string }>({
+    ttlMs: 7 * 24 * 60 * 60 * 1000,
+    maxEntries: 500
+  });
 
   /**
    * Calculate a unified composite score (0-100) that represents overall brand strength
@@ -259,15 +271,6 @@ export class CompositeScoreService {
       return { score: 50, factors: ['No trademark data available'] };
     }
 
-    // Debug logging
-    console.log('Trademark Score Calculation:', {
-      overallRisk: trademarkResult.riskAssessment.overallRisk,
-      exactMatches: trademarkResult.exactMatches.length,
-      similarMatches: trademarkResult.similarMatches.length,
-      riskFactors: trademarkResult.riskAssessment.riskFactors,
-      selectedCategory
-    });
-
     let score = 100;
     const factors: string[] = [];
 
@@ -331,8 +334,7 @@ export class CompositeScoreService {
   private async evaluateBrandNameWithLLM(brandName: string): Promise<{ score: number; reasoning: string }> {
     // Check cache first
     const cached = CompositeScoreService.brandQualityCache.get(brandName.toLowerCase());
-    if (cached !== undefined) {
-      console.log(`Brand quality cache hit for "${brandName}": ${cached.score} - ${cached.reasoning}`);
+    if (cached) {
       return cached;
     }
 
@@ -340,7 +342,7 @@ export class CompositeScoreService {
     const { AIService } = await import('./aiService');
 
     const aiService = new AIService({
-      provider: (process.env.AI_PROVIDER as any) || 'openai',
+      provider: (process.env.AI_PROVIDER as import('./aiService').AIConfig['provider'] | undefined) || 'openai',
       apiKey: process.env.AI_API_KEY,
       model: process.env.AI_MODEL || 'gpt-4o-mini'
     });
@@ -418,7 +420,6 @@ REASON: [one sentence explanation]`,
       // Cache the result
       const result = { score, reasoning };
       CompositeScoreService.brandQualityCache.set(brandName.toLowerCase(), result);
-      console.log(`LLM brand quality for "${brandName}": ${score} - ${reasoning}`);
 
       return result;
     } catch (error) {
@@ -580,10 +581,10 @@ REASON: [one sentence explanation]`,
 
   private generateSummary(
     overallScore: number,
-    domainScore: any,
-    socialScore: any,
-    trademarkScore: any,
-    brandScore: any
+    domainScore: ScoreDetails,
+    socialScore: ScoreDetails,
+    trademarkScore: ScoreDetails,
+    brandScore: ScoreDetails
   ): string {
     const recommendation = this.getRecommendation(overallScore);
 
@@ -629,4 +630,3 @@ REASON: [one sentence explanation]`,
     return summary;
   }
 }
-

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { BrandKit, BrandTone } from '@/lib/models/DomainResult';
 import StandardContainer from './StandardContainer';
 import { InfoBox } from './design-system';
@@ -8,14 +8,21 @@ import { InfoBox } from './design-system';
 interface BrandKitRailProps {
   brandKit: BrandKit | null;
   errorMessage?: string | null;
+  onBrandKitChange?: Dispatch<SetStateAction<BrandKit | null>>;
   isLoading: boolean;
-  onCheckDomain?: (domain: string) => void;
   searchTerm?: string;
 }
 
-export default function BrandKitRail({ brandKit, errorMessage, isLoading, onCheckDomain, searchTerm }: BrandKitRailProps) {
+export default function BrandKitRail({
+  brandKit,
+  errorMessage,
+  onBrandKitChange,
+  isLoading,
+  searchTerm
+}: BrandKitRailProps) {
   const [selectedTone, setSelectedTone] = useState<BrandTone>('modern');
   const [generatingTone, setGeneratingTone] = useState<BrandTone | null>(null);
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [isDesignFinalized, setIsDesignFinalized] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [justFinalized, setJustFinalized] = useState(false);
@@ -26,10 +33,37 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
     </svg>
   );
 
+  useEffect(() => {
+    setSelectedTone('modern');
+    setGeneratingTone(null);
+    setRegeneratingSection(null);
+    setIsDesignFinalized(false);
+    setHasUnsavedChanges(false);
+    setJustFinalized(false);
+  }, [brandKit?.brandName]);
+
+  const commitBrandKitUpdate = (
+    brandName: string,
+    updater: (current: BrandKit) => BrandKit
+  ) => {
+    if (!onBrandKitChange) {
+      return;
+    }
+
+    onBrandKitChange((current) => {
+      if (!current || current.brandName !== brandName) {
+        return current;
+      }
+
+      return updater(current);
+    });
+  };
+
   // Handle tone change (lazy load if needed)
   const handleToneChange = async (tone: BrandTone) => {
     if (!brandKit) return;
 
+    const brandName = brandKit.brandName;
     setSelectedTone(tone);
 
     // Tone change = design change, disable top CTA
@@ -60,13 +94,18 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
 
         const data = await response.json();
 
-        // Update brand kit with new tone data
-        brandKit.tones[tone] = {
-          tagline: data.tagline,
-          logoPrompt: data.logoPrompt,
-          colors: data.colors,
-          typography: data.typography
-        };
+        commitBrandKitUpdate(brandName, (current) => ({
+          ...current,
+          tones: {
+            ...current.tones,
+            [tone]: {
+              tagline: data.tagline,
+              logoPrompt: data.logoPrompt,
+              colors: data.colors,
+              typography: data.typography
+            }
+          }
+        }));
 
       } catch (error) {
         console.error(`Failed to load ${tone} tone:`, error);
@@ -76,13 +115,12 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
     }
   };
 
-  // State for tracking which section is regenerating
-  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
-
   // Handle regenerating specific section
   const handleRegenerateSection = async (section: 'tagline' | 'colors' | 'typography') => {
     const currentTone = brandKit?.tones[selectedTone];
     if (!brandKit || !currentTone) return;
+
+    const brandName = brandKit.brandName;
 
     // Regenerating = design change, disable top CTA
     if (isDesignFinalized) {
@@ -118,7 +156,13 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
         [section]: data[section]
       };
 
-      brandKit.tones[selectedTone] = updatedTone;
+      commitBrandKitUpdate(brandName, (current) => ({
+        ...current,
+        tones: {
+          ...current.tones,
+          [selectedTone]: updatedTone
+        }
+      }));
 
       // Auto-regenerate logo concept after updating tagline, colors, or typography
       setRegeneratingSection('logoPrompt');
@@ -143,62 +187,22 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
 
       if (logoResponse.ok) {
         const logoData = await logoResponse.json();
-        brandKit.tones[selectedTone] = {
-          ...updatedTone,
-          logoPrompt: logoData.logoPrompt
-        };
+        commitBrandKitUpdate(brandName, (current) => ({
+          ...current,
+          tones: {
+            ...current.tones,
+            [selectedTone]: {
+              ...updatedTone,
+              logoPrompt: logoData.logoPrompt
+            }
+          }
+        }));
       }
 
     } catch (error) {
       console.error(`Failed to regenerate ${section}:`, error);
     } finally {
       setRegeneratingSection(null);
-    }
-  };
-
-  // Handle "Generate Again" - regenerates all sections
-  const handleGenerateAgain = async () => {
-    if (!brandKit) return;
-
-    // Regenerating all = design change, disable top CTA
-    if (isDesignFinalized) {
-      setIsDesignFinalized(false);
-      setHasUnsavedChanges(true);
-    }
-
-    setGeneratingTone(selectedTone);
-
-    try {
-      const response = await fetch('/api/brand-kit/voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName: brandKit.brandName,
-          tone: selectedTone,
-          searchTerm: searchTerm || brandKit.brandName,
-          audience: 'general audience',
-          regenerate: true  // Request new variation
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to regenerate content');
-      }
-
-      const data = await response.json();
-
-      // Update with new content
-      brandKit.tones[selectedTone] = {
-        tagline: data.tagline,
-        logoPrompt: data.logoPrompt,
-        colors: data.colors,
-        typography: data.typography
-      };
-
-    } catch (error) {
-      console.error('Failed to regenerate:', error);
-    } finally {
-      setGeneratingTone(null);
     }
   };
 
@@ -392,7 +396,7 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
                 </svg>
               </button>
             </div>
-            <p className="text-sm text-gray-300 italic">"{currentTone.tagline}"</p>
+            <p className="text-sm text-gray-300 italic">&ldquo;{currentTone.tagline}&rdquo;</p>
           </div>
 
           {/* Colors */}
@@ -513,7 +517,7 @@ export default function BrandKitRail({ brandKit, errorMessage, isLoading, onChec
 
             {!isDesignFinalized && (
               <p className="text-xs text-gray-400 mt-2 text-center">
-                Click when you're happy with your brand design
+                Click when you&rsquo;re happy with your brand design
               </p>
             )}
           </div>

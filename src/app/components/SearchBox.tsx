@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 interface SearchBoxProps {
-  onSearch: (query: string) => void;
+  onSearch: (query: string) => void | Promise<void>;
   isLoading: boolean;
 }
 
@@ -12,18 +12,8 @@ export default function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('SearchBox form submitted with query:', query);
-    console.log('onSearch function:', typeof onSearch);
     if (query.trim()) {
-      console.log('Calling onSearch with:', query.trim());
-      try {
-        onSearch(query.trim());
-        console.log('onSearch called successfully');
-      } catch (error) {
-        console.error('Error calling onSearch:', error);
-      }
-    } else {
-      console.log('Query is empty, not calling onSearch');
+      void onSearch(query.trim());
     }
   };
 

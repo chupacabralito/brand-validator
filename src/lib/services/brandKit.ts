@@ -1,5 +1,6 @@
 import { BrandKit, BrandTone, ToneCreative } from '../models/DomainResult';
-import { AIService, AIConfig } from './aiService';
+import { AIService, type AIConfig, type AIPrompt } from './aiService';
+import { BoundedMemoryCache } from '../utils/boundedCache';
 
 export interface BrandKitInput {
   idea: string;
@@ -15,14 +16,20 @@ interface BrandAnalysis {
   visualMetaphors: string[];
 }
 
+type SectionName = 'tagline' | 'logoPrompt' | 'colors' | 'typography';
+type SectionCreativeResult = string | ToneCreative['colors'] | ToneCreative['typography'];
+
 export class BrandKitService {
   private aiService: AIService;
-  private analysisCache: Map<string, BrandAnalysis> = new Map();
+  private analysisCache = new BoundedMemoryCache<BrandAnalysis>({
+    ttlMs: 24 * 60 * 60 * 1000,
+    maxEntries: 500
+  });
 
   constructor(aiModel: string = 'claude-3.5') {
     // Initialize AI service - NO MOCK ALLOWED
     const aiConfig: AIConfig = {
-      provider: (process.env.AI_PROVIDER as any) || 'claude',
+      provider: (process.env.AI_PROVIDER as AIConfig['provider'] | undefined) || 'claude',
       apiKey: process.env.AI_API_KEY,
       model: process.env.AI_MODEL || aiModel,
       baseUrl: process.env.AI_BASE_URL,
@@ -156,14 +163,14 @@ Return ONLY valid JSON in this exact structure:
     brandName: string,
     analysis: BrandAnalysis,
     tone: BrandTone,
+    section: SectionName,
     audience?: string,
-    section?: 'tagline' | 'logoPrompt' | 'colors' | 'typography',
     actualValues?: {
       tagline?: string;
-      colors?: { primary: string; secondary: string; accent: string };
+      colors?: { primary: string; secondary: string; accent?: string };
       typography?: { heading: string; body: string };
     }
-  ): Promise<any> {
+  ): Promise<SectionCreativeResult> {
     const toneDescriptions = {
       modern: {
         aesthetic: 'innovative, cutting-edge, tech-forward, sleek, minimalist, contemporary',
@@ -184,7 +191,7 @@ Return ONLY valid JSON in this exact structure:
 
     const toneInfo = toneDescriptions[tone];
 
-    let prompt: any;
+    let prompt: AIPrompt;
 
     switch (section) {
       case 'tagline':
@@ -307,17 +314,17 @@ Return ONLY valid JSON:
         const parsed = JSON.parse(jsonStr);
 
         // Return just the section data
-        if (section === 'tagline') return parsed.tagline;
-        if (section === 'logoPrompt') return parsed.logoPrompt;
-        if (section === 'colors') return parsed.colors;
-        if (section === 'typography') return parsed.typography;
+        if (section === 'tagline') return parsed.tagline as string;
+        if (section === 'logoPrompt') return parsed.logoPrompt as string;
+        if (section === 'colors') return parsed.colors as ToneCreative['colors'];
+        if (section === 'typography') return parsed.typography as ToneCreative['typography'];
       }
     } catch (error) {
       console.error(`Failed to parse ${section} response:`, error);
     }
 
     // Fallback values
-    const fallbacks: Record<'tagline' | 'logoPrompt' | 'colors' | 'typography', any> = {
+    const fallbacks: Record<SectionName, SectionCreativeResult> = {
       tagline: 'Innovation meets excellence',
       logoPrompt: 'Modern minimalist logo with clean typography and bold colors',
       colors: {
@@ -337,11 +344,12 @@ Return ONLY valid JSON:
   /**
    * Analyze brand meaning (Step 1 - cached per brand name)
    */
-  private async analyzeBrandMeaning(brandName: string, idea: string): Promise<BrandAnalysis> {
+  async analyzeBrandMeaning(brandName: string, idea: string): Promise<BrandAnalysis> {
     // Check cache first
     const cacheKey = brandName.toLowerCase();
-    if (this.analysisCache.has(cacheKey)) {
-      return this.analysisCache.get(cacheKey)!;
+    const cached = this.analysisCache.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     const prompt = {
@@ -386,7 +394,7 @@ Return ONLY valid JSON:
     }
 
     // Clean up the idea string
-    let brandName = idea
+    const brandName = idea
       .toLowerCase()
       .replace(/^brand for /i, '')  // Remove "Brand for" prefix
       .replace(/\.(com|net|org|io|co|ai|app|dev|tech|biz|info|me|us|uk|ca)$/i, '')  // Remove TLDs

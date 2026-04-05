@@ -1,32 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BrandKitService } from '@/lib/services/brandKit';
-import { BrandTone } from '@/lib/models/DomainResult';
+import { AIProviderError, toPublicAIError } from '@/lib/utils/aiErrors';
+import {
+  parseBrandKitVoiceRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { brandName, tone, searchTerm, regenerate, audience, regenerateOnly, actualValues } = body;
-
-    if (!brandName || !tone || !searchTerm) {
-      return NextResponse.json(
-        { error: 'Missing required fields: brandName, tone, searchTerm' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
     }
 
-    if (!['modern', 'playful', 'formal'].includes(tone)) {
-      return NextResponse.json(
-        { error: 'Invalid tone. Must be modern, playful, or formal' },
-        { status: 400 }
-      );
+    const parsed = parseBrandKitVoiceRequest(body.data);
+    if (!parsed.success) {
+      return validationErrorResponse(parsed);
     }
+
+    const { brandName, tone, searchTerm, regenerate, audience, regenerateOnly, actualValues } = parsed.data;
 
     const brandKitService = new BrandKitService();
 
     // Step 1: Analyze brand meaning (this is cached)
-    const analysis = await (brandKitService as any).analyzeBrandMeaning(brandName, searchTerm);
+    const analysis = await brandKitService.analyzeBrandMeaning(brandName, searchTerm);
 
     // Step 2: Generate tone-specific creative
     // If regenerateOnly is specified, only regenerate that specific section
@@ -34,9 +34,9 @@ export async function POST(request: NextRequest) {
       const sectionCreative = await brandKitService.generateSectionCreative(
         brandName,
         analysis,
-        tone as BrandTone,
-        audience,
+        tone,
         regenerateOnly,
+        audience,
         actualValues  // Pass actual values for logo prompt generation
       );
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const toneCreative = await brandKitService.generateToneCreative(
       brandName,
       analysis,
-      tone as BrandTone,
+      tone,
       audience,
       regenerate || false
     );
@@ -61,10 +61,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Tone-specific content generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate tone-specific content' },
-      { status: 500 }
-    );
+    if (error instanceof AIProviderError) {
+      console.error('Tone-specific content generation error:', {
+        provider: error.provider,
+        status: error.status,
+        code: error.code,
+        message: error.providerMessage
+      });
+    } else {
+      console.error('Tone-specific content generation error:', error);
+    }
+
+    const publicError = toPublicAIError(error, 'Brand kit content');
+    return NextResponse.json(publicError.body, { status: publicError.status });
   }
 }

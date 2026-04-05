@@ -1,3 +1,5 @@
+import { AIProviderError, createAIProviderError } from '../utils/aiErrors';
+
 export interface AIConfig {
   provider: 'openai' | 'claude' | 'anthropic' | 'mock';
   apiKey?: string;
@@ -38,6 +40,38 @@ export class AIService {
     }
   }
 
+  private async createProviderError(response: Response, provider: 'openai' | 'anthropic' | 'claude'): Promise<AIProviderError> {
+    const rawBody = await response.text().catch(() => '');
+    let providerMessage = response.statusText || 'Request failed';
+    let code: string | undefined;
+
+    if (rawBody) {
+      try {
+        const parsed = JSON.parse(rawBody) as {
+          error?: {
+            code?: string;
+            message?: string;
+            type?: string;
+          };
+          message?: string;
+          type?: string;
+        };
+
+        providerMessage = parsed.error?.message || parsed.message || providerMessage;
+        code = parsed.error?.code || parsed.error?.type || parsed.type;
+      } catch {
+        providerMessage = rawBody.slice(0, 200);
+      }
+    }
+
+    return createAIProviderError({
+      code,
+      provider,
+      providerMessage,
+      response
+    });
+  }
+
   private async callOpenAI(prompt: AIPrompt): Promise<string> {
     if (!this.config.apiKey) {
       throw new Error('OpenAI API key not provided');
@@ -61,7 +95,7 @@ export class AIService {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw await this.createProviderError(response, 'openai');
     }
 
     const data = await response.json();
@@ -91,7 +125,7 @@ export class AIService {
     });
 
     if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+      throw await this.createProviderError(response, 'anthropic');
     }
 
     const data = await response.json();

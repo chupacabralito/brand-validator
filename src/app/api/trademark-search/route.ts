@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TrademarkSearchService } from '@/lib/services/trademarkSearch';
+import { TrademarkSearchResult, TrademarkSearchService } from '@/lib/services/trademarkSearch';
+import { BoundedMemoryCache } from '@/lib/utils/boundedCache';
+import {
+  parseTrademarkSearchRequest,
+  readJsonObject,
+  validationErrorResponse
+} from '@/lib/utils/requestValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,66 +17,37 @@ const trademarkService = new TrademarkSearchService(
   process.env.MARKER_API_PASSWORD
 );
 
-// In-memory cache for trademark searches
-interface CacheEntry {
-  result: any;
-  timestamp: number;
-}
-
-const trademarkCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache (trademarks change rarely)
+const trademarkCache = new BoundedMemoryCache<TrademarkSearchResult>({
+  ttlMs: 10 * 60 * 1000,
+  maxEntries: 250
+});
 
 // In-flight request deduplication
-const pendingRequests = new Map<string, Promise<any>>();
+const pendingRequests = new Map<string, Promise<TrademarkSearchResult>>();
 
 function getCacheKey(brandName: string, classes: number[], includeInternational: boolean): string {
-  const classesStr = classes.length > 0 ? classes.sort().join(',') : 'all';
+  const classesStr = classes.length > 0 ? [...classes].sort((a, b) => a - b).join(',') : 'all';
   const intlStr = includeInternational ? 'intl' : 'us';
   return `tm:${brandName.toLowerCase()}:${classesStr}:${intlStr}`;
 }
 
-function getCachedResult(brandName: string, classes: number[], includeInternational: boolean): any | null {
-  const cacheKey = getCacheKey(brandName, classes, includeInternational);
-  const cached = trademarkCache.get(cacheKey);
-
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-    console.log(`[CACHE HIT] Trademark search for ${brandName}`);
-    return cached.result;
-  }
-
-  // Clean up expired cache entry
-  if (cached) {
-    trademarkCache.delete(cacheKey);
-  }
-
-  return null;
-}
-
-function setCachedResult(brandName: string, classes: number[], includeInternational: boolean, result: any): void {
-  const cacheKey = getCacheKey(brandName, classes, includeInternational);
-  trademarkCache.set(cacheKey, {
-    result,
-    timestamp: Date.now()
-  });
-  console.log(`[CACHE SET] Trademark search for ${brandName}`);
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const { brandName, classes, includeInternational } = await request.json();
-
-    if (!brandName) {
-      return NextResponse.json(
-        { error: 'Brand name is required' },
-        { status: 400 }
-      );
+    const body = await readJsonObject(request);
+    if (!body.success) {
+      return validationErrorResponse(body);
     }
 
-    const classesArray = classes || [];
-    const includeIntl = includeInternational || false;
+    const parsed = parseTrademarkSearchRequest(body.data);
+    if (!parsed.success) {
+      return validationErrorResponse(parsed);
+    }
+
+    const { brandName, classes: classesArray, includeInternational: includeIntl } = parsed.data;
+    const cacheKey = getCacheKey(brandName, classesArray, includeIntl);
 
     // Check cache first
-    const cachedResult = getCachedResult(brandName, classesArray, includeIntl);
+    const cachedResult = trademarkCache.get(cacheKey);
     if (cachedResult) {
       const response = NextResponse.json({
         ...cachedResult,
@@ -86,8 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if there's already a pending request for this trademark
-    const cacheKey = getCacheKey(brandName, classesArray, includeIntl);
-    let pendingRequest = pendingRequests.get(cacheKey);
+    const pendingRequest = pendingRequests.get(cacheKey);
 
     if (pendingRequest) {
       console.log(`[DEDUP] Waiting for in-flight request for ${brandName}`);
@@ -117,7 +93,7 @@ export async function POST(request: NextRequest) {
       const result = await requestPromise;
 
       // Cache the result
-      setCachedResult(brandName, classesArray, includeIntl, result);
+      trademarkCache.set(cacheKey, result);
 
       const response = NextResponse.json({
         ...result,
@@ -134,15 +110,12 @@ export async function POST(request: NextRequest) {
       // Clean up pending request
       pendingRequests.delete(cacheKey);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Trademark search error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to perform trademark search' },
+      { error: error instanceof Error ? error.message : 'Failed to perform trademark search' },
       { status: 500 }
     );
   }
 }
-
-
-
 
