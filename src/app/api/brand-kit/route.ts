@@ -3,8 +3,6 @@ import { BrandKitService, BrandKitInput } from '@/lib/services/brandKit';
 
 export const dynamic = 'force-dynamic';
 
-const brandKitService = new BrandKitService(process.env.AI_MODEL || 'claude-3.5');
-
 export async function POST(request: NextRequest) {
   try {
     const { idea, tone, audience, domain } = await request.json();
@@ -31,13 +29,17 @@ export async function POST(request: NextRequest) {
       domain
     };
 
+    const brandKitService = new BrandKitService(process.env.AI_MODEL || 'claude-3.5');
     const result = await brandKitService.generateBrandKit(input);
 
     return NextResponse.json(result);
   } catch (error) {
     console.error('Brand kit generation error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate brand kit' },
+      {
+        error: 'Failed to generate brand kit',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

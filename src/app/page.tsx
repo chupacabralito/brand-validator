@@ -15,6 +15,54 @@ import { CompositeScoreResult } from '@/lib/services/compositeScore';
 // NO DYNAMIC IMPORTS - Load all components immediately to prevent layout shift
 // This ensures the grid structure renders instantly and data populates progressively
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const isBrandKitResponse = (value: unknown): value is BrandKit => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const { brandName, tones } = value;
+
+  if (typeof brandName !== 'string' || !isRecord(tones)) {
+    return false;
+  }
+
+  return ['modern', 'playful', 'formal'].every((tone) => tone in tones);
+};
+
+const getApiErrorMessage = (value: unknown, fallback: string): string => {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  if (typeof value.details === 'string' && value.details.trim()) {
+    return value.details;
+  }
+
+  if (typeof value.error === 'string' && value.error.trim()) {
+    return value.error;
+  }
+
+  return fallback;
+};
+
+const parseBrandKitResponse = async (response: Response): Promise<BrandKit> => {
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(data, 'Brand kit generation failed'));
+  }
+
+  if (!isBrandKitResponse(data)) {
+    throw new Error('Brand kit response was missing required fields');
+  }
+
+  return data;
+};
+
 export default function Home() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +76,7 @@ export default function Home() {
   // Results state
   const [domainResult, setDomainResult] = useState<DomainResult | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
+  const [brandKitError, setBrandKitError] = useState<string | null>(null);
   const [socialResult, setSocialResult] = useState<SocialCheckResult | null>(null);
   const [trademarkResult, setTrademarkResult] = useState<TrademarkSearchResult | null>(null);
   const [compositeResult, setCompositeResult] = useState<CompositeScoreResult | null>(null);
@@ -124,14 +173,15 @@ export default function Home() {
   useEffect(() => {
     if (compositeResult && query) {
       const cacheKey = `search_${query.toLowerCase()}`;
-      const cacheData = {
-        timestamp: Date.now(),
-        domain: domainResult,
-        brand: brandKit,
-        social: socialResult,
-        trademark: trademarkResult,
-        composite: compositeResult
-      };
+        const cacheData = {
+          timestamp: Date.now(),
+          domain: domainResult,
+          brand: brandKit,
+          brandError: brandKitError,
+          social: socialResult,
+          trademark: trademarkResult,
+          composite: compositeResult
+        };
 
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -140,7 +190,7 @@ export default function Home() {
         console.warn('Failed to cache results:', e);
       }
     }
-  }, [compositeResult, query, domainResult, brandKit, socialResult, trademarkResult]);
+  }, [compositeResult, query, domainResult, brandKit, brandKitError, socialResult, trademarkResult]);
 
   const handleAffiliateClick = async (partner: string, offer: string, url: string) => {
     try {
@@ -222,7 +272,8 @@ export default function Home() {
           console.log('Using cached results (age:', Math.floor(cacheAge / 1000), 'seconds)');
           setShowResults(true);
           setDomainResult(cachedData.domain || null);
-          setBrandKit(cachedData.brand || null);
+          setBrandKit(isBrandKitResponse(cachedData.brand) ? cachedData.brand : null);
+          setBrandKitError(typeof cachedData.brandError === 'string' ? cachedData.brandError : null);
           setSocialResult(cachedData.social || null);
           setTrademarkResult(cachedData.trademark || null);
           setCompositeResult(cachedData.composite || null);
@@ -243,6 +294,7 @@ export default function Home() {
     // Reset all results and set all to loading
     setDomainResult(null);
     setBrandKit(null);
+    setBrandKitError(null);
     setSocialResult(null);
     setTrademarkResult(null);
     setCompositeResult(null);
@@ -294,14 +346,17 @@ export default function Home() {
           }),
           signal: AbortSignal.timeout(15000)
         })
-        .then(res => res.json())
+        .then(parseBrandKitResponse)
         .then(data => {
           console.log('Brand API response:', data);
+          setBrandKitError(null);
           setBrandKit(data);
           setIsBrandLoading(false);
         })
         .catch(err => {
           console.error('Brand API failed:', err);
+          setBrandKit(null);
+          setBrandKitError(err instanceof Error ? err.message : 'Brand kit unavailable right now');
           setIsBrandLoading(false);
         });
 
@@ -364,15 +419,18 @@ export default function Home() {
           }),
           signal: AbortSignal.timeout(15000)
         })
-        .then(res => res.json())
+        .then(parseBrandKitResponse)
         .then(data => {
           console.log('Brand API response:', data);
+          setBrandKitError(null);
           setBrandKit(data);
           setIsBrandLoading(false);
           setIsLoading(false); // Stop main spinner after first result
         })
         .catch(err => {
           console.error('Brand API failed:', err);
+          setBrandKit(null);
+          setBrandKitError(err instanceof Error ? err.message : 'Brand kit unavailable right now');
           setIsBrandLoading(false);
         });
 
@@ -502,6 +560,7 @@ export default function Home() {
               {/* Right Rail - Brand Kit (SLOWEST: ~5-15s - uses AI) */}
               <BrandKitRail
                 brandKit={brandKit}
+                errorMessage={brandKitError}
                 isLoading={isBrandLoading}
                 onCheckDomain={handleDomainCheck}
                 searchTerm={query}

@@ -7,12 +7,13 @@ import { InfoBox } from './design-system';
 
 interface BrandKitRailProps {
   brandKit: BrandKit | null;
+  errorMessage?: string | null;
   isLoading: boolean;
   onCheckDomain?: (domain: string) => void;
   searchTerm?: string;
 }
 
-export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searchTerm }: BrandKitRailProps) {
+export default function BrandKitRail({ brandKit, errorMessage, isLoading, onCheckDomain, searchTerm }: BrandKitRailProps) {
   const [selectedTone, setSelectedTone] = useState<BrandTone>('modern');
   const [generatingTone, setGeneratingTone] = useState<BrandTone | null>(null);
   const [isDesignFinalized, setIsDesignFinalized] = useState(false);
@@ -277,14 +278,21 @@ export default function BrandKitRail({ brandKit, isLoading, onCheckDomain, searc
     );
   }
 
-  if (!brandKit) {
+  if (!brandKit?.tones) {
     return (
       <StandardContainer
         icon={brandKitIcon}
         title="Brand Kit"
         color="orange"
       >
-        <p className="text-gray-400">Enter an idea to generate brand assets</p>
+        {errorMessage ? (
+          <InfoBox variant="danger">
+            <p className="text-sm text-red-200">Brand kit is unavailable right now.</p>
+            <p className="mt-1 text-xs text-red-200/80">{errorMessage}</p>
+          </InfoBox>
+        ) : (
+          <p className="text-gray-400">Enter an idea to generate brand assets</p>
+        )}
       </StandardContainer>
     );
   }
