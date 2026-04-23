@@ -342,3 +342,11 @@ AI prompts are defined inline in service methods (e.g., `brandKit.ts:buildPrompt
 2. Run `npx prisma migrate dev` or `npx prisma db push`
 3. Run `npx prisma generate` to update client
 4. Import updated client from `src/lib/db.ts`
+
+## Contextual (Automated Passes)
+
+When executing passes dispatched by Contextual, follow these rules:
+
+- **Do NOT run production builds** (npm run build, next build, vite build, etc.) — the dev server is already running and a production build will corrupt its build cache, crashing the dev server.
+- **Let HMR handle reloads** — the dev server will hot-reload your changes automatically. There is no need to verify builds manually.
+- **Record the outcome** when finished — use the `contextual-server record-outcome` command provided in the pass prompt.
